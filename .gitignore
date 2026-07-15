@@ -1,0 +1,48 @@
+# ── Secrets: NEVER commit ──────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.yaml
+
+# ── Generated / vendored ───────────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.whl
+*.tar.gz
+node_modules/
+.DS_Store
+dist/
+build/
+*.egg-info/
+
+# ── Local runtime ──────────────────────────────────────────
+.supero/
+*.log
+.pytest_cache/
+htmlcov/
+.coverage
+
+# ── SDK-regenerated UI artifacts ───────────────────────────
+# Restored on `./run.sh` from the installed `supero` wheel
+# (see supero/cli/run.py — extract_to_project manifest).
+# Only ui/app.js is hand-written source.
+apps/*/*/ui/web/
+apps/*/*/ui/supero-schemas.js
+apps/*/*/ui/supero-ui.js
+apps/*/*/ui/dispatcher.js
+apps/*/*/ui/field-renderer.js
+apps/*/*/ui/config.js
+apps/*/*/ui/index.html
+apps/*/*/ui/server.py
+
+# ── Runtime state & telemetry (regenerated / not source) ───
+apps/*/*/.supero-state.json
+apps/*/*/.supero-health.json
+apps/*/*/.supero-drift.json
+apps/*/*/.supero/
+apps/*/*/ui/telemetry.js

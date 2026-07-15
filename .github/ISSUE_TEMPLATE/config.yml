@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/supero-platform/supero-apps/security/policy
+    about: Please report privately to security@supero.dev — not a public issue.
+  - name: Questions & ideas
+    url: https://github.com/supero-platform/supero-apps/discussions
+    about: Ask anything, show what you built.

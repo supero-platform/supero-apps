@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'   # weekly — catch drift in live links
+
+jobs:
+  no-secrets:
+    name: No secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Block committed .env / keys / wheels
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$|\.pem$|\.key$|\.whl$|(^|/)\.venv/'; then
+            echo "::error::Secret or build artifact committed. See CONTRIBUTING.md."
+            exit 1
+          fi
+          echo "OK: no .env / keys / wheels tracked"
+
+      - name: Scan history for credential patterns
+        run: |
+          if git grep -IlE '(sk-ant-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|mongodb\+srv://[^ ]*:[^ @]*@|-----BEGIN [A-Z ]*PRIVATE KEY)' -- . ':!*.example' ; then
+            echo "::error::Credential pattern found."
+            exit 1
+          fi
+          echo "OK: no credential patterns"
+
+      - name: No real domains in docs
+        run: |
+          if git grep -IlE 'superoapps\.app' -- .; then
+            echo "::error::Docs reference a real production domain. Use your-domain / you@example.com."
+            exit 1
+          fi
+          echo "OK: docs use placeholders"
+
+      - name: No hardcoded default passwords
+        run: |
+          # Detect any hardcoded admin_password fallback WITHOUT embedding a real
+          # default string in the repo: match `admin_password ... or "<literal>"`.
+          if git grep -nE 'admin_password.*getenv\([^)]*\)\s*or\s*"' -- 'apps/**/config.py'; then
+            echo "::error::A config.py admin_password falls back to a hardcoded literal. Use _require_password()."
+            exit 1
+          fi
+          echo "OK: no hardcoded default admin passwords"
+
+      - name: No internal-doc citations bled into source
+        run: |
+          if git grep -nE '§[0-9]|SKILLS\.md|for grep validators|-DESIGN\.md' -- 'apps/**'; then
+            echo "::error::Internal generator citation leaked into public source."
+            exit 1
+          fi
+          echo "OK: no internal-doc citations"
+
+      - name: No on-prem mechanics leaked (sales pointer OK, mechanics not)
+        run: |
+          if git grep -InE 'nuitka|\.deb\b|compiled binaries|pubkey|ed25519|license\.lic|LICENSE_ENFORCED|MAC allow-list|air-gap install' -- 'docs/**' '*.md'; then
+            echo "::error::On-prem packaging mechanics leaked into public docs. Keep it to a sales pointer."
+            exit 1
+          fi
+          echo "OK: on-prem kept to a sales pointer, no mechanics"
+
+      - name: No real dev domains leaked
+        run: |
+          if git grep -InE '\b(mani|skillsmarathon|supero-apps)[0-9]+\b|superoapps\.app|\bmani13\b' -- 'apps/**' ':!*.example'; then
+            echo "::error::A real dev/prod domain leaked into app files. Use your-domain."
+            exit 1
+          fi
+          echo "OK: no real dev domains"
+
+      - name: Docs teach the real schema DSL
+        run: |
+          if git grep -InE '"required"\s*:\s*True|"parent"\s*:\s*"|RuleDef\(|access="read"|schema="[A-Z]' -- 'docs/**'; then
+            echo "::error::Docs use a schema/policy DSL the apps do not. Use mandatory/parent_type and PolicyRule(entity=..., can_read=...)."
+            exit 1
+          fi
+          echo "OK: docs match real DSL"
+
+  apps-well-formed:
+    name: Apps well-formed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: Every app has the required files
+        run: |
+          fail=0
+          for d in apps/*/*/; do
+            for f in README.md schemas.py setup.py config.py .env.example run.sh; do
+              [ -f "$d$f" ] || { echo "::error file=$d::missing $f"; fail=1; }
+            done
+            if [ -f "$d.env.example" ] && grep -qE '^SUPERO_PASSWORD=.+' "$d.env.example"; then
+              echo "::error file=$d.env.example::must ship blank"; fail=1
+            fi
+          done
+          exit $fail
+
+      - name: schemas.py / config.py parse
+        run: |
+          fail=0
+          for f in apps/*/*/schemas.py apps/*/*/config.py; do
+            python -m py_compile "$f" || { echo "::error file=$f::syntax error"; fail=1; }
+          done
+          exit $fail
+
+  links:
+    name: Live apps reachable
+    runs-on: ubuntu-latest
+    continue-on-error: true    # informational: the gallery is ours, not the PR author's fault
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every advertised app is actually up
+        run: |
+          fail=0
+          for u in $(grep -ohE 'https://[a-z-]+\.supero\.live' README.md apps/README.md | sort -u); do
+            c=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 20 "$u" || echo 000)
+            [ "$c" = "200" ] && echo "  ok  $u" || { echo "::warning::$u -> $c"; fail=1; }
+          done
+          exit $fail

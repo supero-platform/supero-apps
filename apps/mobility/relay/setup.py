@@ -65,16 +65,16 @@ POLICIES = [
         # sign-off the UI implies. Self-registration is open, so this needed no
         # credential at all.
         #
-        # readonly_fields is stripped from create AND update payloads server-side.
-        # Only the money and approval-state fields are locked — every field the app's
-        # own UI writes (clinician_username, clinician_name, checked_in_at,
-        # checked_out_at) stays writable, so no screen changes behaviour. Those
-        # transitions belong to the approval/booking services, not to raw CRUD.
+        # Only the transactional state fields are locked. rate_hourly, pay_total and
+        # facility_username are SET BY THE UI AT CREATE (a facility posting a shift,
+        # a clinician submitting a timesheet), and readonly_fields strips on create
+        # as well as update — locking them silently dropped a shift's pay rate.
+        # workflow_status/processed_at appear in no create payload, so locking them
+        # blocks the self-approval path without breaking either flow.
         PolicyRule(entity="shift", can_read=True, can_create=True, can_update=True,
-                   readonly_fields=["rate_hourly", "pay_total", "workflow_status",
-                                    "processed_at", "facility_username"]),
+                   readonly_fields=["workflow_status", "processed_at"]),
         PolicyRule(entity="timesheet", can_read=True, can_create=True, can_update=True,
-                   readonly_fields=["workflow_status", "processed_at", "facility_username"]),
+                   readonly_fields=["workflow_status", "processed_at"]),
         PolicyRule(entity="timesheet_step", can_read=True, can_create=True, can_update=True),
         PolicyRule(entity="contract", can_read=True, can_create=True, can_update=True,
                    readonly_fields=["billing_amount", "plan_name", "shifts_per_period"]),

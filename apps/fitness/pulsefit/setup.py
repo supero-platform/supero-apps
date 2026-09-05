@@ -141,14 +141,17 @@ POLICIES = [
         PolicyRule(entity="club", can_read=True),
         PolicyRule(entity="class_offering", can_read=True),
         PolicyRule(entity="trainer", can_read=True),
-        # MEMBERSHIP-FIELD-GUARD-V1 — nothing stopped a member from PUTting
-        # {member_state: "active", plan: "Elite"} onto their own record, granting
-        # themselves the top tier without a payment. The join flow CREATES the
-        # record (create still carries these), and the app never updates a member
-        # afterwards, so locking them on update breaks no screen.
-        PolicyRule(entity="member", can_read=True, can_create=True, can_update=True,
-                   filter_field="owner_username", filter_match="$user.name",
-                   readonly_fields=["member_state", "plan"]),
+        # MEMBERSHIP-FIELD-GUARD-V1 — nothing stopped a member PUTting
+        # {member_state:"active", plan:"Elite"} onto their own record, granting
+        # themselves the top tier without paying.
+        #
+        # readonly_fields is the WRONG tool here: it strips on CREATE as well as
+        # update, and member_state is mandatory, so locking it made the join form
+        # fail with "Missing mandatory field: member_state" (caught by the CRUD
+        # smoke tests). Dropping can_update achieves the same guard — the app
+        # creates a member at signup and never updates one afterwards.
+        PolicyRule(entity="member", can_read=True, can_create=True,
+                   filter_field="owner_username", filter_match="$user.name"),
         PolicyRule(entity="class_booking", can_read=True, can_create=True, can_update=True,
                    filter_field="owner_username", filter_match="$user.name"),
     ]),

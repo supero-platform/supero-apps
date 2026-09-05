@@ -2,7 +2,7 @@
 
 # Supero Apps
 
-**19 applications. Full source. Clone one onto your own domain and run it.**
+**15 applications. Full source. Clone one onto your own domain and run it.**
 
 Every app in this repo is **running live right now** — and this is the code behind it.
 Multi-tenant, role-based, schema-driven. No npm, no build step. MIT app source, open SDK,

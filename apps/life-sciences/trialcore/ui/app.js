@@ -41,9 +41,25 @@
   function isCoordinator() {
     try { return client.isAuthenticated() && (client.canWrite('participant') || client.can('read', 'participant')); } catch (e) { return false; }
   }
+  // AI-ERROR-LEAK-FIX-V1 — this used to fall through to `res.output` itself when
+  // text/completion/content were absent, JSON.stringify it, and return a non-empty
+  // string. A failed AI call answers HTTP 200 with {success:false,
+  // output:{error:"Your credit balance is too low..."}}, so the caller's
+  // `if (!t) throw` guard never fired and the provider's raw error object was
+  // rendered to the visitor AS the AI's answer. Return '' on any failure shape so
+  // the caller's fallback runs instead.
   function aiText(res) {
-    var t = res && (res.output && (res.output.text || res.output.completion || res.output.content || res.output) || res.text || res.completion || res.content || res);
-    if (typeof t !== 'string') { try { t = JSON.stringify(t); } catch (e) { t = ''; } } return t || '';
+    var r = res || {};
+    if (r.success === false || r.error) return '';
+    var out = r.output;
+    if (typeof out === 'string') return out.trim();
+    if (out && typeof out === 'object') {
+      if (out.error) return '';
+      var t = out.text || out.completion || out.content;
+      if (typeof t === 'string') return t.trim();
+    }
+    var t2 = r.text || r.completion || r.content;
+    return typeof t2 === 'string' ? t2.trim() : '';
   }
 
   function injectChrome() {

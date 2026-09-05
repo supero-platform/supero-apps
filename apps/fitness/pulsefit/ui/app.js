@@ -342,8 +342,19 @@
     var c = props.ctx;
     function join(plan) {
       if (services && services.stripe && services.stripe.checkout) {
+        // PAYMENT-VERIFY-V1 — this read `r.url`, but a checkout URL comes back in
+        // the execute envelope at `r.output.url` / `r.output.checkout_url`. So
+        // `r.url` was undefined even on a completely successful call, `throw 0`
+        // always fired, and EVERY join fell through to the free sign-up path —
+        // a $219/mo Elite membership activated without ever charging anyone.
         services.stripe.checkout({ amount: plan.price, product: 'PulseFit ' + plan.name, successUrl: window.location.href })
-          .then(function (r) { if (r && r.url) { window.location.href = r.url; return; } throw 0; })
+          .then(function (r) {
+            if (r && r.success === false) throw new Error(r.error || 'checkout failed');
+            var o = ((r && r.output) || r || {});
+            var u = o.checkout_url || o.url || o.checkoutUrl;
+            if (u) { window.location.href = u; return; }
+            throw new Error('no checkout url');
+          })
           .catch(function () { c.startJoin(plan); });
       } else { c.startJoin(plan); }
     }

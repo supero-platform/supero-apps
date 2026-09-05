@@ -175,8 +175,20 @@
     var usePct = (me && plan && plan.included_units) ? Math.min(100, Math.round((me.usage_units / plan.included_units) * 100)) : 0;
     function pay(inv) {
       if (services && services.stripe && services.stripe.checkout) {
-        services.stripe.checkout({ amount: inv.amount, product: 'Ledgerline ' + inv.invoice_number, successUrl: window.location.origin + '/?paid=1' }).then(function (r) { var u = ((r && r.output) || r || {}); u = u.checkout_url || u.url; if (u) { window.location.href = u; return; } markPaid(inv); }).catch(function () { markPaid(inv); });
-      } else markPaid(inv);
+        // PAYMENT-VERIFY-V1 — a failed Stripe call must NOT mark the invoice paid.
+        // Every branch here used to end in markPaid(): Stripe absent, Stripe
+        // answering success:false (HTTP 200), or Stripe rejecting outright. So a
+        // billing product's Pay button reported "Invoice paid" while collecting
+        // nothing. Only a genuine absence of Stripe is a simulation now.
+        services.stripe.checkout({ amount: inv.amount, product: 'Ledgerline ' + inv.invoice_number, successUrl: window.location.origin + '/?paid=1' })
+          .then(function (r) {
+            if (r && r.success === false) throw new Error(r.error || 'checkout failed');
+            var u = ((r && r.output) || r || {}); u = u.checkout_url || u.url;
+            if (u) { window.location.href = u; return; }
+            throw new Error('no checkout url');
+          })
+          .catch(function () { showToast('Payment could not be started — this invoice is still unpaid.', 'error'); });
+      } else markPaid(inv);   // Stripe not configured in this environment
     }
     function markPaid(inv) { client.updateObject('invoice', inv.uuid, { invoice_state: 'paid', paid_at: new Date().toISOString() }, inv).then(function () { showToast('Invoice paid', 'success'); client.getObjects('invoice').then(function (r) { setInvoices(arr(r)); }); }).catch(function () { showToast('Payment simulated', 'info'); }); }
     return h('div', { className: 'll-wrap ll-sec' },

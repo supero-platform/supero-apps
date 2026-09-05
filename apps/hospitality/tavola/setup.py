@@ -125,7 +125,25 @@ DEMO_RESERVATIONS = [
 
 
 POLICIES = [
-    PolicyDef(role="tenant_admin", default_access="full", rules=[]),
+    # DEMO-ACCOUNT-SCOPE-V1 — this account's address and password are PUBLISHED in
+    # this app's README so anyone can try the demo, so it must not also be a
+    # skeleton key. It used to be `default_access="full"` with no rules at all:
+    # unrestricted read/write/delete over EVERY entity in the domain, not just the
+    # 5 this app owns. Now it is scoped to this app's own entities.
+    #
+    # Delete is granted only where the UI actually offers it, so a visitor cannot
+    # destroy the seeded demo data through an operation the app never exposed.
+    #
+    # Deliberately NOT read-only: these demos turn on being able to create and
+    # advance records. Fully read-only demo logins plus self-registration is a
+    # separate product decision.
+    PolicyDef(role="tenant_admin", default_access="none", rules=[
+        PolicyRule(entity="menu_item", can_read=True, can_create=True, can_update=True, can_delete=True),
+        PolicyRule(entity="order", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="order_line", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="reservation", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="restaurant", can_read=True, can_create=True, can_update=True, can_delete=True),
+    ]),
     PolicyDef(role="tenant_user", default_access="none", rules=[
         # Discovery — every diner may read locations and menus:
         PolicyRule(entity="restaurant", can_read=True),
@@ -205,12 +223,18 @@ WORKFLOW_DEFINITIONS = [
 
 # TWO event bindings (an order @create + a reservation @create) — both fine.
 EVENT_BINDINGS = [
+    # NO-OPEN-RELAY-V1 — the recipient is taken from `user.email` (the verified
+    # JWT of whoever performed the action), NOT from the record field the
+    # visitor typed. The form field is free text, so mapping it here let any
+    # signed-in visitor aim this app's real transactional mail at a stranger —
+    # using the demo password published in this README. The event payload
+    # carries `user` from the verified token (server.py: payload["user"]).
     {"event": "@create:tavola:order", "workflow_id": "order_confirmation",
-     "input_map": {"customer_email": "customer_email", "customer_phone": "customer_phone",
+     "input_map": {"customer_email": "user.email",
                    "customer_name": "customer_name", "order_number": "order_number",
                    "restaurant_name": "restaurant_name", "total": "total"}},
     {"event": "@create:tavola:reservation", "workflow_id": "reservation_confirmation",
-     "input_map": {"customer_email": "customer_email", "customer_name": "customer_name",
+     "input_map": {"customer_email": "user.email", "customer_name": "customer_name",
                    "restaurant_name": "restaurant_name", "party_size": "party_size",
                    "start_time": "start_time"}},
 ]

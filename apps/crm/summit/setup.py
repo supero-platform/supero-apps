@@ -158,7 +158,25 @@ ACTIVITIES = [
 
 
 POLICIES = [
-    PolicyDef(role="tenant_admin", default_access="full", rules=[]),  # manager sees ALL
+    # DEMO-ACCOUNT-SCOPE-V1 — this account's address and password are PUBLISHED in
+    # this app's README so anyone can try the demo, so it must not also be a
+    # skeleton key. It used to be `default_access="full"` with no rules at all:
+    # unrestricted read/write/delete over EVERY entity in the domain, not just the
+    # 5 this app owns. Now it is scoped to this app's own entities.
+    #
+    # Delete is granted only where the UI actually offers it, so a visitor cannot
+    # destroy the seeded demo data through an operation the app never exposed.
+    #
+    # Deliberately NOT read-only: these demos turn on being able to create and
+    # advance records. Fully read-only demo logins plus self-registration is a
+    # separate product decision.
+    PolicyDef(role="tenant_admin", default_access="none", rules=[
+        PolicyRule(entity="account", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="activity", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="contact", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="deal", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="lead", can_read=True, can_create=True, can_update=True),
+    ]),  # manager sees ALL
     PolicyDef(role="tenant_user", default_access="none", rules=[
         # Rep can read all accounts & contacts (shared book of business).
         PolicyRule(entity="account", can_read=True),

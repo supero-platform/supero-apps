@@ -4,9 +4,8 @@
 
 **19 applications. Full source. Clone one onto your own domain and run it.**
 
-Fifteen of them are **running live right now** — and this is the code behind it. The four
-multi-tenant apps are source-only until they are deployed; the table below says which is
-which. Role-based, schema-driven. No npm, no build step. MIT app source, open SDK,
+Every app in this repo is **running live right now** — and this is the code behind it.
+Multi-tenant, role-based, schema-driven. No npm, no build step. MIT app source, open SDK,
 your data exportable over the API — see [how this works, honestly](#how-this-works-honestly).
 
 [Live apps](https://www.supero.dev/apps) · [Quickstart](docs/quickstart.md) · [Build with Claude](docs/mcp.md) · [Platform docs](docs/)
@@ -79,10 +78,10 @@ still arrives with fields removed.
 
 | App | What it is | Tenants | Live |
 |---|---|---|---|
-| [**Medora**](apps/healthcare/medora) | Hospital network — appointments, encounters, prescriptions, labs, invoicing. A patient reads their own encounter with `assessment` and `plan` stripped server-side | 3 hospitals | _not yet deployed_ |
-| [**Helix**](apps/life-sciences/helix) | Multi-site clinical trials — participants, visits, adverse events. The treatment `arm` is withheld from blinded investigators by the access policy, not by the UI | 3 sites | _not yet deployed_ |
-| [**Lattice**](apps/real-estate/lattice) | Property management — units, leases, rent, maintenance, applications. Applicants cannot read the leasing team's screening notes | 3 managers | _not yet deployed_ |
-| [**Pulse**](apps/fitness/pulse) | Multi-location gym — classes, bookings, memberships, check-ins | 3 locations | _not yet deployed_ |
+| [**Medora**](apps/healthcare/medora) | Hospital network — appointments, encounters, prescriptions, labs, invoicing. A patient reads their own encounter with `assessment` and `plan` stripped server-side | 3 hospitals | [medora.supero.live](https://medora.supero.live) |
+| [**Helix**](apps/life-sciences/helix) | Multi-site clinical trials — participants, visits, adverse events. The treatment `arm` is withheld from blinded investigators by the access policy, not by the UI | 3 sites | [helix.supero.live](https://helix.supero.live) |
+| [**Lattice**](apps/real-estate/lattice) | Property management — units, leases, rent, maintenance, applications. Applicants cannot read the leasing team's screening notes | 3 managers | [lattice.supero.live](https://lattice.supero.live) |
+| [**Pulse**](apps/fitness/pulse) | Multi-location gym — classes, bookings, memberships, check-ins | 3 locations | [pulse.supero.live](https://pulse.supero.live) |
 
 Sign in on any of them and the login page lists every demo account with its tenant,
 role and password — click a row to fill the form.

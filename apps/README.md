@@ -1,8 +1,6 @@
 # Apps by industry
 
-19 applications. Each is complete and yours to clone. The 15 single-tenant apps are
-live at `<name>.supero.live`; the 4 multi-tenant ones (medora, helix, lattice, pulse)
-are source-only until they are deployed.
+19 applications. Each is live at `<name>.supero.live`, each is complete, each is yours to clone.
 
 Every app follows the same shape — so once you've read one, you've read all of them:
 

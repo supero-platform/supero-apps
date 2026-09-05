@@ -1,4 +1,3 @@
-# WORKFLOW_TESTS_VERSION: 1
 # WORKFLOW_TESTS_VERSION: 2
 """
 workflow_tests.py — Workflow binding + execution validator.
@@ -370,8 +369,27 @@ def check_workflows_validate_on_platform(defs, client, results):
         wf_id = d.get("workflow_id")
         if not wf_id:
             continue
+        # VALIDATE_NOT_EXECUTE_V1 — a bare {"workflow_id": ...} does NOT
+        # validate: the workflows handler infers the operation from the object
+        # shape when it cannot read one it recognises, and
+        #     workflow_id present + no steps  =>  run_workflow
+        # (see workflows/handler.py::_infer_operation). The envelope's own
+        # operation arrives under a key that function does not read, so this
+        # "static validation" check used to EXECUTE every workflow in the app,
+        # with empty input, against the live project on every test run —
+        # sending real emails/Slack messages and attempting CRUD updates with a
+        # blank record_uuid. Two independent belts stop that:
+        #   1. operation_id INSIDE the input — _infer_operation reads this first.
+        #   2. steps inline — makes the shape rule resolve to validate_workflow
+        #      anyway (steps present AND no "input" key), and gives the platform
+        #      the actual step graph to check services/ops against.
+        _validate_input = {
+            "operation_id": "validate_workflow",
+            "workflow_id": wf_id,
+            "steps": d.get("steps") or [],
+        }
         body, err = client.execute_service_op(
-            "workflows", "validate_workflow", {"workflow_id": wf_id},
+            "workflows", "validate_workflow", _validate_input,
         )
         if err:
             results.warn(

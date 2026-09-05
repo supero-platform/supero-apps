@@ -77,8 +77,16 @@ POLICIES = [
     ]),
     PolicyDef(role="tenant_user", default_access="none", rules=[
         PolicyRule(entity="plan", can_read=True),
+        # BILLING-FIELD-GUARD-V1 — `customer` carries this account's billing truth
+        # (mrr, plan_name, tier, seats, usage_units, account_state). The rule granted
+        # blanket can_update with no field restriction, so a customer could clear
+        # their own past_due state or move themselves to Enterprise with one direct
+        # API call, without paying. The app's own portal never updates a customer
+        # record at all, so locking these costs no functionality.
         PolicyRule(entity="customer", can_read=True, can_update=True,
-                   filter_field="owner_username", filter_match="$user.name"),
+                   filter_field="owner_username", filter_match="$user.name",
+                   readonly_fields=["mrr", "plan_name", "tier", "seats",
+                                    "usage_units", "account_state"]),
         PolicyRule(entity="invoice", can_read=True,
                    filter_field="owner_username", filter_match="$user.name"),
         PolicyRule(entity="expense", can_read=True, can_create=True,

@@ -53,12 +53,31 @@ POLICIES = [
         PolicyRule(entity="verification_step", can_read=True, can_create=True, can_update=True),
     ]),
     PolicyDef(role="tenant_user", default_access="none", rules=[
-        # Shift board is public + claimable → shared read/create/update.
-        PolicyRule(entity="shift", can_read=True, can_create=True, can_update=True),
-        # Timesheets are two-party (clinician submits, facility approves) → shared.
-        PolicyRule(entity="timesheet", can_read=True, can_create=True, can_update=True),
+        # SHARED-RECORD-WRITE-GUARD-V1 — these four are deliberately SHARED: a shift
+        # board everyone can see, and a timesheet both the clinician and the facility
+        # must read. A row filter would break that, since filter_field matches one
+        # field and these records have two legitimate parties.
+        #
+        # But "shared" was implemented as unrestricted: any signed-in user could
+        # PUT any field on anyone's record. A clinician could approve their own
+        # timesheet (`workflow_status`) or raise their own rate (`rate_hourly`,
+        # `pay_total`, `amount`) with a direct API call, bypassing the facility
+        # sign-off the UI implies. Self-registration is open, so this needed no
+        # credential at all.
+        #
+        # readonly_fields is stripped from create AND update payloads server-side.
+        # Only the money and approval-state fields are locked — every field the app's
+        # own UI writes (clinician_username, clinician_name, checked_in_at,
+        # checked_out_at) stays writable, so no screen changes behaviour. Those
+        # transitions belong to the approval/booking services, not to raw CRUD.
+        PolicyRule(entity="shift", can_read=True, can_create=True, can_update=True,
+                   readonly_fields=["rate_hourly", "pay_total", "workflow_status",
+                                    "processed_at", "facility_username"]),
+        PolicyRule(entity="timesheet", can_read=True, can_create=True, can_update=True,
+                   readonly_fields=["workflow_status", "processed_at", "facility_username"]),
         PolicyRule(entity="timesheet_step", can_read=True, can_create=True, can_update=True),
-        PolicyRule(entity="contract", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="contract", can_read=True, can_create=True, can_update=True,
+                   readonly_fields=["billing_amount", "plan_name", "shifts_per_period"]),
         # Clinician-private wallet + money + verification status.
         PolicyRule(entity="credential", can_read=True, can_create=True, can_update=True,
                    filter_field="owner_username", filter_match="$user.name"),

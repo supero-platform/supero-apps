@@ -1,6 +1,6 @@
 # PulseFit
 
-> Your city
+> Your city's boldest workouts — a multi-location boutique fitness brand. Browse clubs, book classes, meet the coaches, and join.
 > **Live:** [pulsefit.supero.live](https://pulsefit.supero.live) · **Industry:** fitness
 
 Part of [Supero Apps](../../../README.md) — clone it onto a domain you own and run it. The

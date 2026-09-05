@@ -25,8 +25,9 @@ Seed users are created on first run. **These are demo passwords — change them 
 
 | Role | Email | Password |
 |---|---|---|
-| Staff (admin) | `dispatch@fieldops.app` | `Password123!` |
-| Customer | `tech@fieldops.app` | `Password123!` |
+| Staff (dispatcher) | `dispatch@fieldops.app` | `Password123!` |
+| Technician | `tech@fieldops.app` | `Password123!` |
+| Customer | `customer@fieldops.app` | `Password123!` |
 
 ## What's inside
 

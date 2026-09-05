@@ -3,6 +3,10 @@
 > Per-diem healthcare staffing — facilities post shifts, clinicians claim them.
 > **Live:** [fleetpro.supero.live](https://fleetpro.supero.live) · **Industry:** healthcare staffing
 
+<!-- The hosted demo is served from the fleetpro subdomain, which predates the app's
+     rename to Relay. The link above is correct; relay.supero.live is not in service. -->
+
+
 Part of [Supero Apps](../../../README.md) — clone it onto a domain you own and run it. The
 app source here is MIT.
 

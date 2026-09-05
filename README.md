@@ -253,7 +253,7 @@ Built something with Supero? Open a PR and add it to the gallery.
 
 <div align="center">
 
-**[supero.dev](https://www.supero.dev)** · [Live apps](https://www.supero.dev/apps) · [Discussions](https://github.com/supero-platform/supero-apps/discussions)
+**[supero.dev](https://www.supero.dev)** · [Live apps](https://www.supero.dev/apps) · [Issues](https://github.com/supero-platform/supero-apps/issues)
 
 App source in this repo is MIT licensed.
 

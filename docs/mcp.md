@@ -77,7 +77,7 @@ Same server, editor-specific config. In Cursor, add to `.cursor/mcp.json`:
 
 Desktop custom connectors require OAuth 2.1, which this server doesn't implement yet
 (it authenticates with API keys and JWTs). **Use Claude Code for now.** OAuth support is
-on the roadmap; watch [Discussions](https://github.com/supero-platform/supero-apps/discussions).
+on the roadmap; follow [Issues](https://github.com/supero-platform/supero-apps/issues) for progress.
 
 ---
 

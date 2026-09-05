@@ -97,7 +97,16 @@
       return res;
     }).catch(function (e) {
       if (e && e.isStateTransitionError) throw e;
-      return client.updateObject(schema, record.uuid, { status: nextStatus }, record).then(function () { return { success: true, fallback: true }; }).catch(function () { throw e; });
+      // HONEST-FALLBACK-V1 — this substituted a raw status write for a FAILED
+        // transactional call and returned {success:true}, indistinguishable from the
+        // real thing. In a credentialing app that meant an admin's "Verify" click
+        // reported "Credential verified" while none of the verification logic ran.
+        // The fallback is kept so a demo still moves, but it now says what it did.
+        return client.updateObject(schema, record.uuid, { status: nextStatus }, record)
+          .then(function () {
+            try { showToast('The ' + (typeof serviceId !== 'undefined' ? serviceId : wireOp) + ' service did not respond — the status was set directly, WITHOUT running its checks (' + ((e && e.message) || 'service error') + ')', 'warning'); } catch (t) {}
+            return { success: true, fallback: true };
+          }).catch(function () { throw e; });
     });
   }
   // Approval helper — passes extending_schema EXPLICITLY (two schemas extend `approval`,
@@ -109,7 +118,16 @@
     try { var t = client.transactional || {}; p = (t && typeof t.execute === 'function') ? Promise.resolve(t.execute('approval', wireOp, input)) : Promise.reject(new Error('no execute')); }
     catch (e) { p = Promise.reject(e); }
     return p.then(function (res) { if (res && res.success === false) throw Object.assign(new Error(res.error || 'failed'), { envelope: res }); return res; })
-      .catch(function (e) { if (e && e.isStateTransitionError) throw e; return client.updateObject(schema, record.uuid, { status: nextStatus }, record).then(function () { return { success: true, fallback: true }; }).catch(function () { throw e; }); });
+      .catch(function (e) { if (e && e.isStateTransitionError) throw e; // HONEST-FALLBACK-V1 — this substituted a raw status write for a FAILED
+        // transactional call and returned {success:true}, indistinguishable from the
+        // real thing. In a credentialing app that meant an admin's "Verify" click
+        // reported "Credential verified" while none of the verification logic ran.
+        // The fallback is kept so a demo still moves, but it now says what it did.
+        return client.updateObject(schema, record.uuid, { status: nextStatus }, record)
+          .then(function () {
+            try { showToast('The ' + (typeof serviceId !== 'undefined' ? serviceId : wireOp) + ' service did not respond — the status was set directly, WITHOUT running its checks (' + ((e && e.message) || 'service error') + ')', 'warning'); } catch (t) {}
+            return { success: true, fallback: true };
+          }).catch(function () { throw e; }); });
   }
   function txnErr(e) {
     if (e && e.isStateTransitionError) showToast('Not allowed from current state' + (e.currentState ? ' (' + e.currentState + ')' : ''), 'error');
@@ -605,8 +623,16 @@
       var input = { shift_uuid: j.uuid, clinician_email: j.clinician_username, facility_email: j.facility_username, amount: j.pay_total, currency: 'USD' };
       var wf = 'shift_settlement';
       if (failMode) { wf = 'shift_settlement_failtest'; input.bogus_uuid = '00000000-0000-0000-0000-000000000000'; }
-      Promise.resolve(runSaga(wf, input))
-        .then(function (res) { setResult(res || { status: 'unknown' }); var st = (res && res.status) || ''; if (st === 'compensated') showToast('Saga compensated — the payout was reversed', 'success'); else if (st === 'completed') showToast('Shift settled & clinician paid', 'success'); else showToast('Saga finished: ' + st, 'warning'); })
+      Promise.resolve(services.workflow.run(wf, input))
+        .then(function (res) {
+          // SAGA-PANEL-UNWRAP-V1 — the run's own status lives in the execute
+          // envelope at res.output.status, not on res. Reading res.status gave
+          // undefined for EVERY run, so this panel always fell to the generic
+          // 'Saga finished: ' branch and the per-step tracker never lit up —
+          // the showpiece for the compensating-saga story was silently inert.
+          if (res && res.success === false) throw new Error(res.error || 'saga call failed');
+          var out = (res && res.output && typeof res.output === 'object') ? res.output : (res || {});
+          setResult(out); var st = out.status || ''; if (st === 'compensated') showToast('Saga compensated — the payout was reversed', 'success'); else if (st === 'completed') showToast('Shift settled & clinician paid', 'success'); else showToast('Saga finished: ' + st, 'warning'); })
         .catch(function (e) { setResult({ status: 'error', error: (e && e.message) || String(e) }); showToast('Could not run saga: ' + (e && e.message || e), 'error'); })
         .finally(function () { setRunning(''); });
     }

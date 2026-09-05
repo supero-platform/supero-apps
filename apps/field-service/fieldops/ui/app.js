@@ -98,7 +98,16 @@
       return res;
     }).catch(function (e) {
       if (e && e.isStateTransitionError) throw e;
-      return client.updateObject(schema, record.uuid, { status: nextStatus }, record).then(function () { return { success: true, fallback: true }; }).catch(function () { throw e; });
+      // HONEST-FALLBACK-V1 — a raw status write standing in for a FAILED
+      // transactional call used to return {success:true}, indistinguishable from
+      // the real thing, so a payment/approval/signature step could be reported as
+      // done when its service never ran. The fallback stays so a demo keeps
+      // moving; it now says what it actually did.
+      return client.updateObject(schema, record.uuid, { status: nextStatus }, record)
+        .then(function () {
+          try { showToast('The ' + serviceId + ' service did not respond — the status was set directly, WITHOUT running its checks (' + ((e && e.message) || 'service error') + ')', 'warning'); } catch (t) {}
+          return { success: true, fallback: true };
+        }).catch(function () { throw e; });
     });
   }
   function txnErr(e) {
@@ -628,8 +637,16 @@
       var input = { appointment_uuid: j.uuid, customer_email: j.owner_username, amount: j.amount, currency: 'USD' };
       var wf = 'job_settlement';
       if (failMode) { wf = 'job_settlement_failtest'; input.bogus_uuid = '00000000-0000-0000-0000-000000000000'; }
-      Promise.resolve(runSaga(wf, input))
-        .then(function (res) { setResult(res || { status: 'unknown' }); var st = (res && res.status) || ''; if (st === 'compensated') showToast('Saga compensated — the captured payment was refunded back', 'success'); else if (st === 'completed') showToast('Job settled', 'success'); else showToast('Saga finished: ' + st, 'warning'); })
+      Promise.resolve(services.workflow.run(wf, input))
+        .then(function (res) {
+          // SAGA-PANEL-UNWRAP-V1 — the run's own status lives in the execute
+          // envelope at res.output.status, not on res. Reading res.status gave
+          // undefined for EVERY run, so this panel always fell to the generic
+          // 'Saga finished: ' branch and the per-step tracker never lit up —
+          // the showpiece for the compensating-saga story was silently inert.
+          if (res && res.success === false) throw new Error(res.error || 'saga call failed');
+          var out = (res && res.output && typeof res.output === 'object') ? res.output : (res || {});
+          setResult(out); var st = out.status || ''; if (st === 'compensated') showToast('Saga compensated — the captured payment was refunded back', 'success'); else if (st === 'completed') showToast('Job settled', 'success'); else showToast('Saga finished: ' + st, 'warning'); })
         .catch(function (e) { setResult({ status: 'error', error: (e && e.message) || String(e) }); showToast('Could not run saga: ' + (e && e.message || e), 'error'); })
         .finally(function () { setRunning(''); });
     }

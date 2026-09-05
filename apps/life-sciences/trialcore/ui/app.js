@@ -283,8 +283,24 @@
     if (!t) return h('div', { className: 'tc-wrap tc-sec' }, h('div', { className: 'tc-empty' }, h('h2', { className: 'tc-h2' }, 'Study not found'), h('button', { className: 'tc-btn tc-btn-ghost', style: { marginTop: '14px' }, onClick: function () { c.navigate('#/studies'); } }, '← Back to studies')));
     var p = pct(t.enrolled, t.enrollment_target);
     function express(e) {
-      e.preventDefault(); if (!name.trim() || !emailV.trim()) { showToast('Add your name and email', 'error'); return; }
-      setDone(true); showToast('Interest registered — a study coordinator will be in touch', 'success');
+      // NO-FAKE-REGISTRATION-V1 — this used to setDone(true) and toast "Interest
+      // registered — a study coordinator will be in touch" without creating any
+      // record, calling any service, or notifying anyone: the name and email were
+      // discarded on the next page load. Telling a prospective trial participant
+      // they are registered when nothing was stored is not acceptable on a
+      // recruiting page. This public page is unauthenticated and has no lead
+      // schema to write to, so it opens a real message to the coordinator
+      // instead of claiming a registration it cannot perform.
+      e.preventDefault();
+      if (!name.trim() || !emailV.trim()) { showToast('Add your name and email', 'error'); return; }
+      var subject = 'Trial interest \u2014 ' + (t.trial_code || t.title || '');
+      var body = 'Name: ' + name + '\nEmail: ' + emailV + '\n\nI would like to know if I am eligible for '
+        + (t.title || 'this study') + (t.trial_code ? ' (' + t.trial_code + ')' : '') + '.';
+      try {
+        window.location.href = 'mailto:' + COORDINATOR_EMAIL + '?subject='
+          + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+      } catch (err) {}
+      setDone(true);
     }
     return h('div', { className: 'tc-wrap tc-sec' },
       h('button', { className: 'tc-ibtn', style: { paddingLeft: 0 }, onClick: function () { c.navigate('#/studies'); } }, '← All studies'),
@@ -310,7 +326,7 @@
           done ? h('div', { style: { textAlign: 'center', padding: '14px 0' } },
             h('div', { style: { fontSize: '36px' } }, '✓'),
             h('div', { className: 'gro', style: { fontWeight: 700, fontSize: '18px', marginTop: '6px' } }, 'Thank you'),
-            h('div', { className: 'tc-mut', style: { marginTop: '6px' } }, 'Your interest in ' + t.trial_code + ' was registered. A study coordinator will reach out about eligibility.'))
+            h('div', { className: 'tc-mut', style: { marginTop: '6px' } }, 'Your email app should have opened a message to the study coordinator for ' + t.trial_code + '. Send it and the team will reply about eligibility. If nothing opened, write to ' + COORDINATOR_EMAIL + '.'))
             : h('form', { onSubmit: express },
               h('div', { className: 'tc-eyebrow' }, 'Participate'),
               h('div', { className: 'gro', style: { fontWeight: 700, fontSize: '18px', margin: '6px 0 4px' } }, 'Express interest'),

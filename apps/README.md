@@ -1,6 +1,6 @@
 # Apps by industry
 
-19 applications. Each is live at `<name>.supero.live`, each is complete, each is yours to clone.
+15 applications. Each is live at `<name>.supero.live`, each is complete, each is yours to clone.
 
 Every app follows the same shape — so once you've read one, you've read all of them:
 

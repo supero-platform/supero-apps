@@ -23,10 +23,24 @@ registers the domain you name in `.env`. Docker works too: `docker compose up`.
 Seed users are created on first run. **These are demo passwords — change them in
 `config.py` before exposing the app to anyone.**
 
-| Role | Email | Password |
-|---|---|---|
-| Staff (admin) | `claims@sentinel.insure` | `Password123!` |
-| Customer | `member@sentinel.insure` | `Password123!` |
+Sentinel runs **two insurers on one deployment**. Sign in as one and the other's
+book of business is not reachable — not through the UI, and not by calling the API
+directly with a valid token. The row scoping is enforced by the platform.
+
+| Tenant | Role | Email | Password |
+|---|---|---|---|
+| Northwind Mutual | Claims team | `claims@sentinel.insure` | `Password123!` |
+| Northwind Mutual | Policyholder | `member@sentinel.insure` | `Password123!` |
+| Cascade Assurance | Claims team | `claims@cascade.insure` | `Password123!` |
+| Cascade Assurance | Policyholder | `member@cascade.insure` | `Password123!` |
+
+Northwind's policies are numbered `POL-…` and its claims `CLM-2044xx`; Cascade uses
+`POL-CA-…` and `CLM-CA-…`. A cross-tenant leak would therefore be obvious on sight
+rather than needing a UUID comparison.
+
+Signing in as a **policyholder** and as the **claims team** on the same claim shows
+the second axis: `fraud_score` and `internal_notes` are stripped from the
+policyholder's response by the server, not hidden by the UI.
 
 ## What's inside
 

@@ -2,10 +2,11 @@
 
 # Supero Apps
 
-**15 production applications. Full source. Clone one onto your own domain and run it.**
+**19 applications. Full source. Clone one onto your own domain and run it.**
 
-Every app in this repo is **running live right now** — and this is the code behind it.
-Multi-tenant, role-based, schema-driven. No npm, no build step. MIT app source, open SDK,
+Fifteen of them are **running live right now** — and this is the code behind it. The four
+multi-tenant apps are source-only until they are deployed; the table below says which is
+which. Role-based, schema-driven. No npm, no build step. MIT app source, open SDK,
 your data exportable over the API — see [how this works, honestly](#how-this-works-honestly).
 
 [Live apps](https://www.supero.dev/apps) · [Quickstart](docs/quickstart.md) · [Build with Claude](docs/mcp.md) · [Platform docs](docs/)
@@ -67,6 +68,24 @@ with role-based access enforced on the server, not in the UI.
 | [**Atelier**](apps/marketplace/atelier) | B2B wholesale marketplace — discovery storefront, multi-brand cart, net-terms checkout | [atelier.supero.live](https://atelier.supero.live) |
 | [**Summit CRM**](apps/crm/summit) | Pipeline kanban, weighted forecasting, lead conversion, win-rate analytics | [summit.supero.live](https://summit.supero.live) |
 | [**Amplify**](apps/marketing/amplify) | Social marketing — connect channels, compose with AI, schedule, track engagement | [amplify.supero.live](https://amplify.supero.live) |
+
+### 🔐 Multi-tenant (one deployment, many organisations)
+
+Every app above runs a single organisation. These four run several at once, and the
+isolation is enforced by the server: a user signed into one tenant cannot read another
+tenant's rows even by calling the API directly with their own valid token. Two of them
+also demonstrate field-level access control on top of that, so a row you *can* read
+still arrives with fields removed.
+
+| App | What it is | Tenants | Live |
+|---|---|---|---|
+| [**Medora**](apps/healthcare/medora) | Hospital network — appointments, encounters, prescriptions, labs, invoicing. A patient reads their own encounter with `assessment` and `plan` stripped server-side | 3 hospitals | _not yet deployed_ |
+| [**Helix**](apps/life-sciences/helix) | Multi-site clinical trials — participants, visits, adverse events. The treatment `arm` is withheld from blinded investigators by the access policy, not by the UI | 3 sites | _not yet deployed_ |
+| [**Lattice**](apps/real-estate/lattice) | Property management — units, leases, rent, maintenance, applications. Applicants cannot read the leasing team's screening notes | 3 managers | _not yet deployed_ |
+| [**Pulse**](apps/fitness/pulse) | Multi-location gym — classes, bookings, memberships, check-ins | 3 locations | _not yet deployed_ |
+
+Sign in on any of them and the login page lists every demo account with its tenant,
+role and password — click a row to fill the form.
 
 ### 🏢 Operations & Services
 

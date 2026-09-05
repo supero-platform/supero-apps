@@ -109,7 +109,24 @@ LISTINGS = [
 
 # ── Policies ────────────────────────────────────────────────────────────────────
 POLICIES = [
-    PolicyDef(role="tenant_admin", default_access="full", rules=[]),
+    # DEMO-ACCOUNT-SCOPE-V1 — this account's address and password are PUBLISHED in
+    # this app's README so anyone can try the demo, so it must not also be a
+    # skeleton key. It used to be `default_access="full"` with no rules at all:
+    # unrestricted read/write/delete over EVERY entity in the domain, not just the
+    # 4 this app owns. Now it is scoped to this app's own entities.
+    #
+    # Delete is granted only where the UI actually offers it, so a visitor cannot
+    # destroy the seeded demo data through an operation the app never exposed.
+    #
+    # Deliberately NOT read-only: these demos turn on being able to create and
+    # advance records. Fully read-only demo logins plus self-registration is a
+    # separate product decision.
+    PolicyDef(role="tenant_admin", default_access="none", rules=[
+        PolicyRule(entity="agent", can_read=True, can_create=True, can_update=True, can_delete=True),
+        PolicyRule(entity="listing", can_read=True, can_create=True, can_update=True, can_delete=True),
+        PolicyRule(entity="offer", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="tour", can_read=True, can_create=True, can_update=True),
+    ]),
     PolicyDef(role="tenant_user", default_access="none", rules=[
         # Discovery — every signed-in buyer reads the public marketplace:
         PolicyRule(entity="listing", can_read=True),
@@ -194,12 +211,25 @@ WORKFLOW_DEFINITIONS = [
 ]
 
 EVENT_BINDINGS = [
+    # NO-OPEN-RELAY-V1 — the recipient is taken from `user.email` (the verified
+    # JWT of whoever performed the action), NOT from the record field the
+    # visitor typed. The form field is free text, so mapping it here let any
+    # signed-in visitor aim this app's real transactional mail at a stranger —
+    # using the demo password published in this README. The event payload
+    # carries `user` from the verified token (server.py: payload["user"]).
     {"event": "@create:haven:tour", "workflow_id": "tour_confirmation",
-     "input_map": {"customer_email": "customer_email", "customer_phone": "customer_phone",
+     "input_map": {"customer_email": "user.email",
                    "customer_name": "customer_name", "listing_title": "listing_title",
                    "start_time": "start_time"}},
     {"event": "@create:haven:offer", "workflow_id": "offer_received",
-     "input_map": {"agent_email": "customer_email", "listing_title": "listing_title",
+     # WRONG-RECIPIENT-FIX: `agent_email` was mapped from `customer_email`, so
+     # the "a new offer needs your review" mail went to the BUYER who had just
+     # submitted it, and the listing agent was never notified. `Offer` carries
+     # `agent_name` but no agent address, so there is nothing correct to map;
+     # the mapping is removed rather than left pointing at the wrong person.
+     # The #offers Slack step still reaches the brokerage. Restoring the email
+     # needs an `agent_email` field on Offer, resolved from the Agent record.
+     "input_map": {"listing_title": "listing_title",
                    "customer_name": "customer_name", "amount": "amount"}},
 ]
 

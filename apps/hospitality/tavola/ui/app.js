@@ -833,10 +833,28 @@
       var qp = new URLSearchParams(window.location.search || '');
       if (qp.get('paid') === '1' && qp.get('order')) {
         var ouid = qp.get('order');
-        client.getObjects('order').then(function (rows) {
-          var o = arr(rows).filter(function (x) { return x.uuid === ouid; })[0];
-          if (o && o.pay_state !== 'paid') client.updateObject('order', ouid, { pay_state: 'paid', payment_provider: 'stripe' }, o).catch(function () {});
-        }).catch(function () {});
+        var sid = qp.get('session_id') || '';
+        // PAYMENT-VERIFY-V1 — arriving at the success URL is NOT proof of payment.
+        // This used to flip pay_state to 'paid' on the query string alone, so any
+        // diner could mark their own order paid for free by editing the address
+        // bar (?paid=1&order=<their own uuid>). Ask Stripe what actually happened
+        // and only trust its answer.
+        if (sid && services && services.stripe && services.stripe.retrieveCheckoutSession) {
+          services.stripe.retrieveCheckoutSession(sid).then(function (res) {
+            var out = (res && res.output) || res || {};
+            if (res && res.success === false) throw new Error(res.error || 'unverified');
+            var st = String(out.payment_status || out.status || '').toLowerCase();
+            if (st !== 'paid' && st !== 'complete') throw new Error(st || 'unverified');
+            return client.getObjects('order').then(function (rows) {
+              var o = arr(rows).filter(function (x) { return x.uuid === ouid; })[0];
+              if (o && o.pay_state !== 'paid') return client.updateObject('order', ouid, { pay_state: 'paid', payment_provider: 'stripe' }, o);
+            });
+          }).catch(function () {
+            showToast('We could not confirm that payment — the order stays unpaid until Stripe confirms it.', 'warning');
+          });
+        } else {
+          showToast('Payment could not be verified — the order stays unpaid.', 'warning');
+        }
         setCart({ restaurant: '', items: [] }); saveCart({ restaurant: '', items: [] });
         try { window.history.replaceState(null, '', window.location.pathname); } catch (e) {}
         window.location.hash = '#/order/' + ouid; setRoute('#/order/' + ouid);
@@ -900,12 +918,24 @@
         }
         // prepaid → Stripe hosted checkout, simulated fallback
         var origin = window.location.origin;
+        // PAYMENT-VERIFY-V1 — success_url now carries Stripe's session id so the
+        // return handler can verify the payment instead of trusting the redirect.
         return Promise.resolve().then(function () {
-          if (!services || !services.stripe || !services.stripe.checkout) return null;
-          return services.stripe.checkout({ amount: subtotal, product: 'Tavola Order ' + num, successUrl: origin + '/?paid=1&order=' + theOrder.uuid, cancelUrl: origin + '/?cart=1' }).catch(function () { return null; });
+          if (!services || !services.stripe || !services.stripe.checkout) return { _noStripe: true };
+          return services.stripe.checkout({ amount: subtotal, product: 'Tavola Order ' + num, successUrl: origin + '/?paid=1&order=' + theOrder.uuid + '&session_id={CHECKOUT_SESSION_ID}', cancelUrl: origin + '/?cart=1' })
+            .then(function (r) { return (r && r.success === false) ? { _failed: true } : r; },
+                  function () { return { _failed: true }; });
         }).then(function (res) {
           var url = ((res && res.output) || res || {}); url = url.checkout_url || url.url || url.checkoutUrl || '';
           if (url) return client.updateObject('order', theOrder.uuid, { stripe_checkout_url: url }, theOrder).catch(function () {}).then(function () { window.location.href = url; return { redirected: true }; });
+          // A FAILED Stripe call is not a simulation. Previously both landed here
+          // and the order was marked paid + 'simulated' either way, so a broken
+          // Stripe integration silently turned every card order into a free one.
+          if (res && res._failed) {
+            showToast('Payment could not be started — your order is saved as unpaid. Please try again.', 'error');
+            setCart({ restaurant: '', items: [] }); navigate('#/order/' + theOrder.uuid); return { order: theOrder };
+          }
+          // Stripe genuinely not configured in this environment → labelled simulation.
           return client.updateObject('order', theOrder.uuid, { pay_state: 'paid', payment_provider: 'simulated' }, theOrder).catch(function () {}).then(function () {
             setCart({ restaurant: '', items: [] }); navigate('#/order/' + theOrder.uuid); return { order: theOrder };
           });

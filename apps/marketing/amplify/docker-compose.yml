@@ -13,12 +13,12 @@ services:
     build: .
     container_name: amplify
     ports:
-      - "5671:5671"
+      - "5672:5672"
     env_file:
       - .env
     environment:
-      - PORT=5671
-      - UI_PORT=5671
+      - PORT=5672
+      - UI_PORT=5672
     volumes:
       # Mount source for hot-reload during development.
       # ui/ is NOT bind-mounted: extract_to_project writes server.py, index.html,
@@ -32,7 +32,7 @@ services:
       # - ./ui/app.js:/app/ui/app.js:ro   # opt-in: hot-reload the React app
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5671/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5672/"]
       interval: 30s
       timeout: 5s
       retries: 3

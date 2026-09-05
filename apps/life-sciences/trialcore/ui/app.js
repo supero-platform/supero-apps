@@ -48,6 +48,31 @@
   // `if (!t) throw` guard never fired and the provider's raw error object was
   // rendered to the visitor AS the AI's answer. Return '' on any failure shape so
   // the caller's fallback runs instead.
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function aiText(res) {
     var r = res || {};
     if (r.success === false || r.error) return '';
@@ -406,10 +431,10 @@
       .sort(function (a, b) { return (b.serious ? 1 : 0) - (a.serious ? 1 : 0) || (b.onset_date || '').localeCompare(a.onset_date || ''); });
     function escalate(a) {
       var run = (services && services.workflow && services.workflow.run)
-        ? services.workflow.run('ae_escalation', { adverse_event_uuid: a.uuid, subject_id: a.subject_id, trial_code: a.trial_code, term: a.term, severity: a.severity, safety_email: SAFETY_EMAIL })
+        ? runSaga('ae_escalation', { adverse_event_uuid: a.uuid, subject_id: a.subject_id, trial_code: a.trial_code, term: a.term, severity: a.severity, safety_email: SAFETY_EMAIL })
         : Promise.reject();
       run.then(function () { showToast('Escalation saga ran — safety team alerted, AE under review', 'success'); props.onUpdate && props.onUpdate(); setOpen(null); })
-        .catch(function () { client.updateObject('adverse_event', a.uuid, { ae_state: 'under_review' }, a).then(function () { showToast('AE moved under review (alert simulated)', 'info'); props.onUpdate && props.onUpdate(); setOpen(null); }).catch(function () { showToast('Failed', 'error'); }); });
+        .catch(function (err) { showToast('ESCALATION FAILED — the safety team was NOT alerted for ' + (a.subject_id || 'this event') + ': ' + ((err && err.message) || 'workflow error') + '. Escalate manually.', 'error'); });
     }
     function resolve(a) { client.updateObject('adverse_event', a.uuid, { ae_state: 'resolved' }, a).then(function () { showToast('AE resolved', 'success'); props.onUpdate && props.onUpdate(); setOpen(null); }).catch(function () { showToast('Failed', 'error'); }); }
     return h('div', null,
@@ -639,9 +664,9 @@
     var trials = (c.trials || []).slice().sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });
     function milestone(t) {
       var run = (services && services.workflow && services.workflow.run)
-        ? services.workflow.run('enrollment_milestone', { trial_code: t.trial_code, title: t.title, enrolled: t.enrolled, enrollment_target: t.enrollment_target, sponsor_email: SPONSOR_EMAIL })
+        ? runSaga('enrollment_milestone', { trial_code: t.trial_code, title: t.title, enrolled: t.enrolled, enrollment_target: t.enrollment_target, sponsor_email: SPONSOR_EMAIL })
         : Promise.reject();
-      run.then(function () { showToast('Milestone email sent to sponsor for ' + t.trial_code, 'success'); }).catch(function () { showToast('Milestone notice queued (demo)', 'info'); });
+      run.then(function () { showToast('Milestone email sent to sponsor for ' + t.trial_code, 'success'); }).catch(function (err) { showToast('Milestone email NOT sent — ' + ((err && err.message) || 'workflow error'), 'error'); });
     }
     function del(t) { if (!window.confirm('Delete trial ' + t.trial_code + '?')) return; client.deleteObject('trial', t.uuid, t).then(function () { showToast('Deleted', 'success'); c.reload(); }).catch(function () { showToast('Failed', 'error'); }); }
     return h('div', null,

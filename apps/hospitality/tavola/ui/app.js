@@ -19,6 +19,31 @@
   var CUISINE_ICON = { Italian: '🍝', Japanese: '🍣', Mexican: '🌮', American: '🍔', Mediterranean: '🥙', Indian: '🍛', Thai: '🍜', Cafe: '☕' };
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function arr(d) { return Array.isArray(d) ? d : ((d && d.results) || []); }
   function money(n) { n = Number(n) || 0; try { return formatCurrency(n); } catch (e) { return '$' + n.toFixed(2); } }
   function imgUrl(x) { try { return resolveImageUrl(x) || ''; } catch (e) { return ''; } }
@@ -631,10 +656,10 @@
     function markReady(o) {
       var prev = o.order_state;
       var run = (services && services.workflow && services.workflow.run)
-        ? services.workflow.run('order_ready', { order_uuid: o.uuid, customer_phone: o.customer_phone, customer_name: o.customer_name, order_number: o.order_number, restaurant_name: o.restaurant_name, prev_state: prev })
+        ? runSaga('order_ready', { order_uuid: o.uuid, customer_phone: o.customer_phone, customer_name: o.customer_name, order_number: o.order_number, restaurant_name: o.restaurant_name, prev_state: prev })
         : Promise.reject();
       run.then(function () { showToast('Ready saga ran — customer texted for ' + o.order_number, 'success'); load(); })
-        .catch(function () { advance(o, 'ready'); showToast('Marked ready (SMS queued)', 'info'); });
+        .catch(function (err) { advance(o, 'ready'); showToast('Marked ready, but the customer was NOT texted — ' + ((err && err.message) || 'workflow error'), 'warning'); });
     }
     var ords = (orders || []).filter(function (o) { return !loc || o.restaurant_name === loc; });
     return h('div', null,

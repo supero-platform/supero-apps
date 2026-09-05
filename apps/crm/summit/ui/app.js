@@ -37,6 +37,31 @@
   // `if (!t) throw` guard never fired and the provider's raw error object was
   // rendered to the visitor AS the AI's answer. Return '' on any failure shape so
   // the caller's fallback runs instead.
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function aiText(res) {
     var r = res || {};
     if (r.success === false || r.error) return '';
@@ -359,8 +384,8 @@
     }
     function followup() {
       var to = (contact && contact.email) || '';
-      var run = (services && services.workflow && services.workflow.run) ? services.workflow.run('deal_followup', { to_email: to, deal_name: dx.deal_name, next_step: dx.next_step || 'a quick sync', contact_name: dx.contact_name || 'there' }) : Promise.reject();
-      run.then(function () { showToast('Follow-up email sent for ' + dx.deal_name, 'success'); }).catch(function () { showToast('Follow-up queued (demo)', 'info'); });
+      var run = (services && services.workflow && services.workflow.run) ? runSaga('deal_followup', { to_email: to, deal_name: dx.deal_name, next_step: dx.next_step || 'a quick sync', contact_name: dx.contact_name || 'there' }) : Promise.reject();
+      run.then(function () { showToast('Follow-up email sent for ' + dx.deal_name, 'success'); }).catch(function (err) { showToast('Follow-up NOT sent — ' + ((err && err.message) || 'workflow error'), 'error'); });
     }
     return h('div', { className: 'sm-modal', onClick: function (e) { if (e.target === e.currentTarget) props.onClose(); } },
       h('div', { className: 'sm-sheet', style: { padding: '26px' } }, h('button', { className: 'sm-x', onClick: props.onClose }, '×'),
@@ -617,7 +642,7 @@
       var acct = (accounts || []).filter(function (a) { return a.name === dx.account_name; })[0];
       var contact = (contacts || []).filter(function (x) { return x.account_name === dx.account_name && x.is_primary; })[0] || (contacts || []).filter(function (x) { return x.account_name === dx.account_name; })[0];
       var input = { deal_name: dx.deal_name, amount: dx.amount, account_uuid: acct ? acct.uuid : '', account_email: (contact && contact.email) || '', deal_owner: dx.deal_owner || '' };
-      var run = (services && services.workflow && services.workflow.run && acct) ? services.workflow.run('deal_won', input) : Promise.reject();
+      var run = (services && services.workflow && services.workflow.run && acct) ? runSaga('deal_won', input) : Promise.reject();
       run.then(function () { showToast('🎉 Deal won — account promoted & #wins notified', 'success'); refreshAccounts(); }).catch(function () {
         if (acct) client.updateObject('account', acct.uuid, { account_state: 'customer' }, acct).then(function () { refreshAccounts(); }).catch(function () {});
         showToast('🎉 Deal won!', 'success');

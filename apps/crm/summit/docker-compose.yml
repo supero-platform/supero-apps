@@ -13,12 +13,12 @@ services:
     build: .
     container_name: summit-crm
     ports:
-      - "5668:5668"
+      - "5669:5669"
     env_file:
       - .env
     environment:
-      - PORT=5668
-      - UI_PORT=5668
+      - PORT=5669
+      - UI_PORT=5669
     volumes:
       # Mount source for hot-reload during development.
       # ui/ is NOT bind-mounted: extract_to_project writes server.py, index.html,
@@ -32,7 +32,7 @@ services:
       # - ./ui/app.js:/app/ui/app.js:ro   # opt-in: hot-reload the React app
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5668/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5669/"]
       interval: 30s
       timeout: 5s
       retries: 3

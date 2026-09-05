@@ -11,6 +11,31 @@
   var NAVY = '#14283c', TEAL = '#0e7c7b', CORAL = '#ef6f53', GREEN = '#1f8b53', AMBER = '#e0a43a', RED = '#c0392b';
   var PAPER = '#f2f5f6', INK = '#16222e', MUTED = '#5f6c78', LINE = '#e0e6e8', MINT = '#e7f3f2';
   var DISPLAY = "'Sora', system-ui, sans-serif", BODY = "'Inter', system-ui, sans-serif";
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function injectChrome() {
     if (document.getElementById('rl-chrome')) return;
     var l = document.createElement('link'); l.rel = 'stylesheet';
@@ -529,7 +554,7 @@
       var op = ok ? 'approve_step' : 'reject_step', next = ok ? 'approved' : 'rejected';
       approvalOp(op, v, 'verification', 'verification_step', next, 'Admin ' + (ok ? 'verified' : 'rejected'))
         .then(function () { if (v.credential_uuid && ok) return client.updateObject('credential', v.credential_uuid, { verified: true, status: 'scanned' }, { uuid: v.credential_uuid }).catch(function () {}); })
-        .then(function () { if (ok) return services.workflow.run('credential_verified', { verification_uuid: v.uuid, clinician_email: v.owner_username, credential_kind: v.credential_kind }).catch(function () {}); })
+        .then(function () { if (ok) return runSaga('credential_verified', { verification_uuid: v.uuid, clinician_email: v.owner_username, credential_kind: v.credential_kind }).catch(function () {}); })
         .then(function () { showToast(ok ? 'Credential verified' : 'Verification rejected', ok ? 'success' : 'info'); load(); }).catch(txnErr).finally(function () { setBusy(''); });
     }
     function triage(v) { setActive(v); setTri(''); Promise.resolve(services.ai.complete({ prompt: 'A clinician submitted a ' + v.credential_kind + ' credential for ' + v.clinician_name + '. List the 3 key things a credentialing specialist should verify, in one short line each.' })).then(function (r) { setTri(aiText(r) || 'Confirm license number, expiry date, and primary-source verification with the issuing board.'); }).catch(function () { setTri('Confirm license number, expiry date, and primary-source verification with the issuing board.'); }); }
@@ -580,7 +605,7 @@
       var input = { shift_uuid: j.uuid, clinician_email: j.clinician_username, facility_email: j.facility_username, amount: j.pay_total, currency: 'USD' };
       var wf = 'shift_settlement';
       if (failMode) { wf = 'shift_settlement_failtest'; input.bogus_uuid = '00000000-0000-0000-0000-000000000000'; }
-      Promise.resolve(services.workflow.run(wf, input))
+      Promise.resolve(runSaga(wf, input))
         .then(function (res) { setResult(res || { status: 'unknown' }); var st = (res && res.status) || ''; if (st === 'compensated') showToast('Saga compensated — the payout was reversed', 'success'); else if (st === 'completed') showToast('Shift settled & clinician paid', 'success'); else showToast('Saga finished: ' + st, 'warning'); })
         .catch(function (e) { setResult({ status: 'error', error: (e && e.message) || String(e) }); showToast('Could not run saga: ' + (e && e.message || e), 'error'); })
         .finally(function () { setRunning(''); });

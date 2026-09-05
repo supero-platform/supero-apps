@@ -38,6 +38,31 @@
   // `if (!t) throw` guard never fired and the provider's raw error object was
   // rendered to the visitor AS the AI's answer. Return '' on any failure shape so
   // the caller's fallback runs instead.
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function aiText(res) {
     var r = res || {};
     if (r.success === false || r.error) return '';
@@ -556,7 +581,7 @@
       function done(delivery, providerId, err) {
         var data = { post_state: 'published', published_at: new Date().toISOString(), reach: reach, clicks: clicks, engagement: eng, likes: likes, delivery: delivery, provider_post_id: providerId || '', publish_error: err || '' };
         client.updateObject('post', p.uuid, data, p).then(function () {
-          if (services && services.workflow && services.workflow.run) { services.workflow.run('post_publish', { post_uuid: p.uuid, owner_email: (client.userInfo || {}).email, platform: p.platform, campaign_name: p.campaign_name, reach: reach, clicks: clicks, engagement: eng, likes: likes }).catch(function () {}); }
+          if (services && services.workflow && services.workflow.run) { runSaga('post_publish', { post_uuid: p.uuid, owner_email: (client.userInfo || {}).email, platform: p.platform, campaign_name: p.campaign_name, reach: reach, clicks: clicks, engagement: eng, likes: likes }).catch(function () {}); }
           showToast(delivery === 'live' ? ('Posted to ' + p.platform + ' for real ✓') : ('Published (simulated — connect ' + p.platform + ' to post live) 🚀'), delivery === 'live' ? 'success' : 'info');
           c.reload();
         }).catch(function (e) { showToast('Failed: ' + ((e && e.message) || ''), 'error'); });

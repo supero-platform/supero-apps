@@ -7,6 +7,31 @@
   var TIERS = ['Starter', 'Growth', 'Scale', 'Enterprise'];
   var EXP_CATS = ['Software', 'Travel', 'Marketing', 'Office', 'Contractors', 'Other'];
 
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function arr(d) { return Array.isArray(d) ? d : ((d && d.results) || []); }
   function cls() { return Array.prototype.filter.call(arguments, Boolean).join(' '); }
   function money(n) { n = Number(n) || 0; try { return formatCurrency(n); } catch (e) { return '$' + n.toLocaleString(); } }
@@ -267,8 +292,8 @@
     React.useEffect(load, []);
     function markPaid(i) { client.updateObject('invoice', i.uuid, { invoice_state: 'paid', paid_at: new Date().toISOString() }, i).then(function () { showToast('Marked paid', 'success'); load(); }).catch(function () { showToast('Failed', 'error'); }); }
     function dun(i) {
-      var run = (services && services.workflow && services.workflow.run) ? services.workflow.run('invoice_dunning', { invoice_uuid: i.uuid, customer_email: i.customer_email, invoice_number: i.invoice_number, amount: i.amount, dunning_step: (i.dunning_step || 0) + 1 }) : Promise.reject();
-      run.then(function () { showToast('Dunning workflow triggered for ' + i.invoice_number, 'success'); client.updateObject('invoice', i.uuid, { dunning_step: (i.dunning_step || 0) + 1 }, i).catch(function () {}); load(); }).catch(function () { showToast('Dunning reminder queued (demo)', 'info'); });
+      var run = (services && services.workflow && services.workflow.run) ? runSaga('invoice_dunning', { invoice_uuid: i.uuid, customer_email: i.customer_email, invoice_number: i.invoice_number, amount: i.amount, dunning_step: (i.dunning_step || 0) + 1 }) : Promise.reject();
+      run.then(function () { showToast('Dunning reminder sent for ' + i.invoice_number, 'success'); client.updateObject('invoice', i.uuid, { dunning_step: (i.dunning_step || 0) + 1 }, i).catch(function () {}); load(); }).catch(function (err) { showToast('Dunning reminder NOT sent for ' + i.invoice_number + ' — ' + ((err && err.message) || 'workflow error') + '. The dunning step was not advanced.', 'error'); });
     }
     var list = (invoices || []).filter(function (i) { return f === 'all' || i.invoice_state === f; });
     return h('div', null,
@@ -288,7 +313,7 @@
     function load() { client.getObjects('expense').then(function (r) { setExpenses(arr(r).sort(function (a, b) { return (b.submitted_date || '').localeCompare(a.submitted_date || ''); })); }).catch(function () { setExpenses([]); }); }
     React.useEffect(load, []);
     function approve(x) {
-      var run = (services && services.workflow && services.workflow.run) ? services.workflow.run('expense_approval', { expense_uuid: x.uuid, submitter_email: x.submitter_email, title: x.title }) : Promise.reject();
+      var run = (services && services.workflow && services.workflow.run) ? runSaga('expense_approval', { expense_uuid: x.uuid, submitter_email: x.submitter_email, title: x.title }) : Promise.reject();
       run.then(function () { showToast('Approval saga ran for ' + x.title, 'success'); load(); }).catch(function () { client.updateObject('expense', x.uuid, { expense_state: 'approved', approver: (client.userInfo || {}).fullName || 'Finance' }, x).then(function () { showToast('Approved', 'success'); load(); }).catch(function () { showToast('Failed', 'error'); }); });
     }
     function reject(x) { client.updateObject('expense', x.uuid, { expense_state: 'rejected', approver: (client.userInfo || {}).fullName || 'Finance' }, x).then(function () { showToast('Rejected', 'success'); load(); }).catch(function () { showToast('Failed', 'error'); }); }

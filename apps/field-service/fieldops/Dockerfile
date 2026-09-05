@@ -2,7 +2,7 @@
 # Safe to customize — re-running supero.cli will NOT overwrite this file if it exists.
 #
 # Build:   docker build -t fieldops .
-# Run:     docker run -p 5650:5650 --env-file .env fieldops
+# Run:     docker run -p 5651:5651 --env-file .env fieldops
 # Or use:  docker compose up
 
 FROM python:3.11-slim
@@ -28,9 +28,9 @@ RUN chmod +x /app/run.sh 2>/dev/null || true
 
 USER supero
 
-ENV PORT=5650
-ENV UI_PORT=5650
-EXPOSE 5650
+ENV PORT=5651
+ENV UI_PORT=5651
+EXPOSE 5651
 
 # Healthcheck — Supero server responds on the configured port
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

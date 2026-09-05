@@ -10,6 +10,31 @@
   var NAVY = '#14253d', STEEL = '#2c6fb0', AMBER = '#f5a623', GREEN = '#1f9d57', RED = '#c0392b';
   var PAPER = '#f4f6f9', INK = '#1a2230', MUTED = '#5b6675', LINE = '#e2e7ee', SKY = '#eaf2fb';
   var DISPLAY = "'Sora', system-ui, sans-serif", BODY = "'Inter', system-ui, sans-serif";
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function injectChrome() {
     if (document.getElementById('fo-chrome')) return;
     var l = document.createElement('link'); l.rel = 'stylesheet';
@@ -542,7 +567,7 @@
     function act(j, op, next) {
       setBusy(j.uuid + op);
       transition('appointment', op, j, 'appointment', next).then(function () {
-        if (op === 'schedule') return services.workflow.run('appointment_dispatch', { appointment_uuid: j.uuid, tech_phone: '', summary: j.service_name + ' for ' + j.customer_name }).catch(function () {});
+        if (op === 'schedule') return runSaga('appointment_dispatch', { appointment_uuid: j.uuid, tech_phone: '', summary: j.service_name + ' for ' + j.customer_name }).catch(function () {});
       }).then(function () { showToast('Updated', 'success'); load(); }).catch(txnErr).finally(function () { setBusy(''); });
     }
     function doAssign(j, techName, techUser) { client.updateObject('appointment', j.uuid, { technician_name: techName, technician_username: techUser }, j).then(function () { showToast('Assigned ' + techName, 'success'); setAssign(null); load(); }).catch(function (e) { showToast('Failed: ' + (e && e.message || e), 'error'); }); }
@@ -603,7 +628,7 @@
       var input = { appointment_uuid: j.uuid, customer_email: j.owner_username, amount: j.amount, currency: 'USD' };
       var wf = 'job_settlement';
       if (failMode) { wf = 'job_settlement_failtest'; input.bogus_uuid = '00000000-0000-0000-0000-000000000000'; }
-      Promise.resolve(services.workflow.run(wf, input))
+      Promise.resolve(runSaga(wf, input))
         .then(function (res) { setResult(res || { status: 'unknown' }); var st = (res && res.status) || ''; if (st === 'compensated') showToast('Saga compensated — the captured payment was refunded back', 'success'); else if (st === 'completed') showToast('Job settled', 'success'); else showToast('Saga finished: ' + st, 'warning'); })
         .catch(function (e) { setResult({ status: 'error', error: (e && e.message) || String(e) }); showToast('Could not run saga: ' + (e && e.message || e), 'error'); })
         .finally(function () { setRunning(''); });

@@ -2,7 +2,7 @@
 # Safe to customize — re-running supero.cli will NOT overwrite this file if it exists.
 #
 # Build:   docker build -t pulsefit .
-# Run:     docker run -p 5669:5669 --env-file .env pulsefit
+# Run:     docker run -p 5670:5670 --env-file .env pulsefit
 # Or use:  docker compose up
 
 FROM python:3.11-slim
@@ -28,9 +28,9 @@ RUN chmod +x /app/run.sh 2>/dev/null || true
 
 USER supero
 
-ENV PORT=5669
-ENV UI_PORT=5669
-EXPOSE 5669
+ENV PORT=5670
+ENV UI_PORT=5670
+EXPOSE 5670
 
 # Healthcheck — Supero server responds on the configured port
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

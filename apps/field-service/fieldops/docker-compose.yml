@@ -13,12 +13,12 @@ services:
     build: .
     container_name: fieldops
     ports:
-      - "5650:5650"
+      - "5651:5651"
     env_file:
       - .env
     environment:
-      - PORT=5650
-      - UI_PORT=5650
+      - PORT=5651
+      - UI_PORT=5651
     volumes:
       # Mount source for hot-reload during development.
       # ui/ is NOT bind-mounted: extract_to_project writes server.py, index.html,
@@ -32,7 +32,7 @@ services:
       # - ./ui/app.js:/app/ui/app.js:ro   # opt-in: hot-reload the React app
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5650/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5651/"]
       interval: 30s
       timeout: 5s
       retries: 3

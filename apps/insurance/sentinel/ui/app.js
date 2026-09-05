@@ -39,6 +39,31 @@
   // `JSON.stringify(errorObject)` and rendered that to the visitor as the
   // "answer". Return '' on any failure shape so callers take the fallback path,
   // and never stringify a non-string — an object is never a summary.
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function aiText(res) {
     var r = res || {};
     if (r.success === false || r.error) return '';
@@ -575,7 +600,7 @@
         return;
       }
       setSagaBusy(x.uuid + ':' + workflowId);
-      services.workflow.run(workflowId, input)
+      runSaga(workflowId, input)
         .then(function (r) {
           var bad = sagaFailure(r);
           if (bad) throw new Error(bad);

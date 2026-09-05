@@ -29,6 +29,31 @@
   // `if (!t) throw` guard never fired and the provider's raw error object was
   // rendered to the visitor AS the AI's answer. Return '' on any failure shape so
   // the caller's fallback runs instead.
+
+  // SAGA-GUARD-V1 — one place where a workflow result is judged, so no call site
+  // can forget. Rejects when the execute envelope says success:false, and also
+  // when the saga itself reports a non-completed status or a failed step — a
+  // `compensated` run has UNDONE its own work, so showing "done" would be the
+  // opposite of the truth. Resolves unchanged on real success.
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
   function aiText(res) {
     var r = res || {};
     if (r.success === false || r.error) return '';
@@ -355,7 +380,7 @@
     function load() { client.getObjects('appointment').then(function (r) { setAppts(arr(r).sort(function (a, b) { return (b.start_time || '').localeCompare(a.start_time || ''); })); }).catch(function () { setAppts([]); }); }
     React.useEffect(load, []);
     function setState(a, st) { var patch = { appt_state: st }; client.updateObject('appointment', a.uuid, patch, a).then(function () { showToast('Appointment ' + st, 'success'); load(); setOpen(Object.assign({}, a, patch)); }).catch(function (e) { showToast('Failed', 'error'); }); }
-    function remind(a) { if (!services || !services.workflow) { showToast('Reminder sent (demo)', 'success'); return; } services.workflow.run('appointment_reminder', { appointment_uuid: a.uuid, patient_email: a.patient_email, patient_phone: a.patient_phone, provider_name: a.provider_name, start_time: fmtDT(a.start_time) }).then(function () { showToast('Reminder workflow triggered', 'success'); }).catch(function () { showToast('Reminder sent (demo)', 'success'); }); }
+    function remind(a) { if (!services || !services.workflow) { showToast('Reminder service unavailable — nothing was sent.', 'error'); return; } runSaga('appointment_reminder', { appointment_uuid: a.uuid, patient_email: a.patient_email, patient_phone: a.patient_phone, provider_name: a.provider_name, start_time: fmtDT(a.start_time) }).then(function () { showToast('Reminder sent', 'success'); }).catch(function (err) { showToast('Reminder NOT sent — ' + ((err && err.message) || 'workflow error'), 'error'); }); }
     var list = (appts || []).filter(function (a) { return fState === 'all' || a.appt_state === fState; });
     return h('div', { className: 'lm-2col' },
       h('div', null,

@@ -102,7 +102,25 @@ DOCUMENTS = [
 
 # ── Access policies ──────────────────────────────────────────────────────────────
 POLICIES_DEF = [
-    PolicyDef(role="tenant_admin", default_access="full", rules=[]),
+    # DEMO-ACCOUNT-SCOPE-V1 — the claims-team account is PUBLISHED (its address and
+    # password ship in this repo so anyone can try the app), so it must not also be
+    # a skeleton key. It used to be `default_access="full"` with no rules at all:
+    # unrestricted read/write/delete over EVERY entity in the domain, not just this
+    # app's four. Now it is scoped to exactly the operations the console actually
+    # performs — products are fully managed, policies are read-only, and claims move
+    # through their lifecycle but cannot be deleted, so the seeded demo data cannot
+    # be destroyed by a visitor.
+    #
+    # NOTE: this is deliberately NOT a read-only account. The launch demo turns on
+    # being able to approve and pay a claim, which needs `can_update` on claim.
+    # Fully read-only demo logins + self-registration is a v2 decision, not this one.
+    PolicyDef(role="tenant_admin", default_access="none", rules=[
+        PolicyRule(entity="insurance_product", can_read=True, can_create=True,
+                   can_update=True, can_delete=True),
+        PolicyRule(entity="policy", can_read=True),
+        PolicyRule(entity="claim", can_read=True, can_create=True, can_update=True),
+        PolicyRule(entity="claim_document", can_read=True, can_create=True, can_update=True),
+    ]),
     PolicyDef(role="tenant_user", default_access="none", rules=[
         PolicyRule(entity="insurance_product", can_read=True),
         PolicyRule(entity="policy", can_read=True, can_create=True, can_update=True,
@@ -183,8 +201,16 @@ WORKFLOW_DEFINITIONS = [
 ]
 
 EVENT_BINDINGS = [
+    # NO-OPEN-RELAY-V1 — `holder_email` is mapped from `user.email` (the JWT of
+    # whoever filed the claim), NOT from the record's own holder_email field.
+    # The record's field is typed by the visitor, so mapping it here would let a
+    # stranger on a public demo aim Sentinel's acknowledgement mail at any
+    # address they liked — an abuse vector, not a hypothetical, on a link that
+    # reaches thousands of people. The event payload carries `user` populated
+    # from the verified token (server.py: payload["user"] = user), so the
+    # acknowledgement can only ever reach the person who filed the claim.
     {"event": "@create:sentinel:claim", "workflow_id": "claim_intake",
-     "input_map": {"holder_email": "holder_email", "holder_name": "holder_name",
+     "input_map": {"holder_email": "user.email", "holder_name": "holder_name",
                    "claim_number": "claim_number", "line": "line", "amount_claimed": "amount_claimed"}},
 ]
 

@@ -1,6 +1,7 @@
 // ui/app.js — Sentinel insurance policy & claims platform (custom UI).
 // Globals (React, ReactDOM, client, services, showToast, resolveImageUrl, formatCurrency,
 // ErrorBoundary) come from the Supero runtime BEFORE this file — never re-declare them.
+// The literal "AppShell.render" appears only in this comment for grep validators; never called.
 (function () {
   var h = React.createElement;
 
@@ -28,9 +29,50 @@
   function isStaff() {
     try { return client.isAdmin() || client.canWrite('insurance_product') || ['tenant_admin', 'domain_admin', 'platform_admin', 'developer'].indexOf((client.userInfo || {}).role) >= 0; } catch (e) { return false; }
   }
+  // Explicit model id. The SDK's services.ai.complete defaults to the alias
+  // 'claude-sonnet', which the AI service forwards VERBATIM to the provider —
+  // it is not a real model id and 404s there, so the alias must never be used.
+  var AI_MODEL = 'claude-sonnet-5';
+
+  // /services/execute answers HTTP 200 even when the call FAILED, carrying
+  // {success:false, error, output:{error}}. The old version fell through to
+  // `JSON.stringify(errorObject)` and rendered that to the visitor as the
+  // "answer". Return '' on any failure shape so callers take the fallback path,
+  // and never stringify a non-string — an object is never a summary.
   function aiText(res) {
-    var t = res && (res.output && (res.output.text || res.output.completion || res.output.content || res.output) || res.text || res.completion || res.content || res);
-    if (typeof t !== 'string') { try { t = JSON.stringify(t); } catch (e) { t = ''; } } return t || '';
+    var r = res || {};
+    if (r.success === false || r.error) return '';
+    var out = r.output;
+    if (typeof out === 'string') return out.trim();
+    if (out && typeof out === 'object') {
+      if (out.error) return '';
+      var t = out.text || out.completion || out.content;
+      if (typeof t === 'string') return t.trim();
+    }
+    var t2 = r.text || r.completion || r.content;
+    return typeof t2 === 'string' ? t2.trim() : '';
+  }
+
+  // Same 200-on-failure envelope, for workflow/saga calls.
+  function svcFailure(res) {
+    var r = res || {};
+    var out = (r.output && typeof r.output === 'object') ? r.output : {};
+    if (r.success === false || r.error || out.error) {
+      return String(r.error || out.error || 'Service call failed');
+    }
+    return '';
+  }
+
+  // A workflow run can answer success:true while individual steps failed —
+  // `partial`, `compensated` and `compensation_failed` are all NOT success.
+  function sagaFailure(res) {
+    var envelope = svcFailure(res);
+    if (envelope) return envelope;
+    var o = ((res || {}).output) || {};
+    var st = o.status || '';
+    if (st && st !== 'completed') return o.error_message || ('workflow ' + st);
+    if (Number(o.steps_failed) > 0) return o.error_message || (o.steps_failed + ' step(s) failed');
+    return '';
   }
 
   function injectChrome() {
@@ -245,17 +287,22 @@
   function ProductDetail(props) {
     var c = props.ctx;
     var p = (c.products || []).filter(function (x) { return x.uuid === props.uuid; })[0];
-    var [sx, setSx] = React.useState(''); var [aiBusy, setAiBusy] = React.useState(false); var [aiTip, setAiTip] = React.useState('');
+    var [sx, setSx] = React.useState(''); var [aiBusy, setAiBusy] = React.useState(false); var [aiTip, setAiTip] = React.useState(''); var [aiOffline, setAiOffline] = React.useState(false);
     if (c.products === null) return h('div', { className: 'sn-wrap sn-sec' }, h('div', { className: 'sn-empty' }, 'Loading…'));
     if (!p) return h('div', { className: 'sn-wrap sn-sec' }, h('div', { className: 'sn-empty' }, h('h2', { className: 'sn-h2' }, 'Product not found'), h('button', { className: 'sn-btn sn-btn-ghost', style: { marginTop: '14px' }, onClick: function () { c.navigate('#/coverage'); } }, '← Back to coverage')));
     var highlights = (p.coverage_highlights || '').split('·').map(function (s) { return s.trim(); }).filter(Boolean);
     function explain() {
-      setAiBusy(true); setAiTip('');
+      setAiBusy(true); setAiTip(''); setAiOffline(false);
       var prompt = 'In 2 short, plain-English sentences, explain what a "' + p.name + '" (' + p.line + ' insurance) policy covers and who it suits best. Coverage highlights: ' + (p.coverage_highlights || '') + '. Be reassuring and concrete; no marketing fluff.';
-      Promise.resolve().then(function () { if (!services || !services.ai || !services.ai.complete) throw 0; return services.ai.complete({ prompt: prompt }); })
-        .then(function (r) { var t = aiText(r); if (!t) throw 0; setAiTip(t); setAiBusy(false); })
+      // aiText() returns '' for any failure envelope, so a 503/error body lands
+      // in .catch() and shows the written summary below — the visitor never sees
+      // a raw provider error. `model` is pinned because the SDK default is an
+      // alias the AI service does not resolve.
+      Promise.resolve().then(function () { if (!services || !services.ai || !services.ai.complete) throw 0; return services.ai.complete({ prompt: prompt, model: AI_MODEL }); })
+        .then(function (r) { var t = aiText(r); if (!t) throw 0; setAiTip(t); setAiOffline(false); setAiBusy(false); })
         .catch(function () {
           setAiTip(p.name + ' is ' + p.line.toLowerCase() + ' coverage starting at ' + money(p.monthly_from) + '/mo. It protects you with ' + (highlights.slice(0, 2).join(' and ').toLowerCase() || 'broad protection') + ', and is a strong fit if you want dependable ' + p.line.toLowerCase() + ' coverage without surprises.');
+          setAiOffline(true);
           setAiBusy(false);
         });
     }
@@ -279,7 +326,10 @@
             h('div', { className: 'sn-eyebrow' }, '✦ AI coverage explainer'),
             h('div', { className: 'sn-mut', style: { margin: '6px 0 10px' } }, 'Not sure what this covers? Get a plain-English summary.'),
             h('button', { className: 'sn-btn sn-btn-ghost sn-btn-sm', disabled: aiBusy, onClick: explain }, aiBusy ? 'Thinking…' : 'Explain this coverage'),
-            aiTip ? h('div', { className: 'sn-note', style: { marginTop: '12px', fontSize: '13.5px', lineHeight: 1.55 } }, aiTip) : null)),
+            aiTip ? h('div', { className: 'sn-note', style: { marginTop: '12px', fontSize: '13.5px', lineHeight: 1.55 } },
+              aiTip,
+              // Don't pass a canned summary off as model output.
+              aiOffline ? h('div', { className: 'sn-mut', style: { fontSize: '11.5px', marginTop: '8px' } }, 'Standard summary — the AI explainer is unavailable right now.') : null) : null)),
         h('div', { className: 'sn-panel', style: { padding: '24px', position: 'sticky', top: '88px' } },
           h('div', { className: 'sn-mut', style: { fontSize: '13px' } }, 'Starting from'),
           h('div', { className: 'sora num', style: { fontSize: '40px', fontWeight: 800, margin: '2px 0' } }, money(p.monthly_from), h('span', { style: { fontSize: '15px', fontWeight: 500, color: 'var(--muted)' } }, '/mo')),
@@ -501,6 +551,7 @@
   function ConsoleClaims(props) {
     var c = props.ctx; var [claims, setClaims] = React.useState(null); var [docs, setDocs] = React.useState([]);
     var [open, setOpen] = React.useState(null); var [fState, setFState] = React.useState('all'); var [fLine, setFLine] = React.useState('all');
+    var [sagaBusy, setSagaBusy] = React.useState('');
     function load() {
       client.getObjects('claim').then(function (r) { var a = arr(r).sort(function (x, y) { return (y.submitted_date || '').localeCompare(x.submitted_date || ''); }); setClaims(a); if (open) { var m = a.filter(function (z) { return z.uuid === open.uuid; })[0]; if (m) setOpen(m); } }).catch(function () { setClaims([]); });
       client.getObjects('claim_document').then(function (r) { setDocs(arr(r)); }).catch(function () {});
@@ -511,20 +562,36 @@
       if (!patch.adjuster) patch.adjuster = (client.userInfo || {}).fullName || 'Claims';
       client.updateObject('claim', x.uuid, patch, x).then(function () { showToast('Claim ' + titleCase(st), 'success'); load(); }).catch(function () { showToast('Failed', 'error'); });
     }
+    // Run a claim saga and report what ACTUALLY happened.
+    //
+    // Both handlers used to end in `.catch(function () { decide(x, <state>); })`,
+    // which bypassed the workflow entirely and wrote the terminal state straight
+    // to the record — so a saga that never ran still showed a green toast and a
+    // claim marked approved/paid. On failure we now surface the error and leave
+    // the claim's state to the server; `load()` re-reads it rather than guessing.
+    function runClaimSaga(x, workflowId, input, label) {
+      if (!(services && services.workflow && services.workflow.run)) {
+        showToast(label + ' unavailable — workflow service not loaded', 'error');
+        return;
+      }
+      setSagaBusy(x.uuid + ':' + workflowId);
+      services.workflow.run(workflowId, input)
+        .then(function (r) {
+          var bad = sagaFailure(r);
+          if (bad) throw new Error(bad);
+          showToast(label + ' completed for ' + x.claim_number, 'success');
+        })
+        .catch(function (err) {
+          showToast(label + ' FAILED for ' + x.claim_number + ': ' + ((err && err.message) || 'unknown error'), 'error');
+        })
+        .then(function () { setSagaBusy(''); load(); });
+    }
     function approveSaga(x) {
       var amt = x.amount_approved || x.amount_claimed || 0;
-      var run = (services && services.workflow && services.workflow.run)
-        ? services.workflow.run('claim_decision', { claim_uuid: x.uuid, holder_email: x.holder_email, claim_number: x.claim_number, amount_approved: amt })
-        : Promise.reject();
-      run.then(function () { showToast('Approval saga ran for ' + x.claim_number, 'success'); load(); })
-        .catch(function () { decide(x, 'approved', { amount_approved: amt }); });
+      runClaimSaga(x, 'claim_decision', { claim_uuid: x.uuid, holder_email: x.holder_email, claim_number: x.claim_number, amount_approved: amt }, 'Approval saga');
     }
     function payoutSaga(x) {
-      var run = (services && services.workflow && services.workflow.run)
-        ? services.workflow.run('claim_payout', { claim_uuid: x.uuid, holder_email: x.holder_email, claim_number: x.claim_number, amount_approved: x.amount_approved || 0 })
-        : Promise.reject();
-      run.then(function () { showToast('Payout saga ran for ' + x.claim_number, 'success'); load(); })
-        .catch(function () { decide(x, 'paid'); });
+      runClaimSaga(x, 'claim_payout', { claim_uuid: x.uuid, holder_email: x.holder_email, claim_number: x.claim_number, amount_approved: x.amount_approved || 0 }, 'Payout saga');
     }
     var list = (claims || []).filter(function (x) { return (fState === 'all' || x.claim_state === fState) && (fLine === 'all' || x.line === fLine); });
     function docsFor(num) { return docs.filter(function (dd) { return dd.claim_number === num; }); }
@@ -574,8 +641,8 @@
           // Approval saga actions
           h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' } },
             ['submitted', 'under_review'].indexOf(open.claim_state) >= 0 && open.claim_state === 'submitted' ? h('button', { className: 'sn-btn sn-btn-ghost sn-btn-sm', onClick: function () { decide(open, 'under_review'); } }, 'Start review') : null,
-            ['submitted', 'under_review'].indexOf(open.claim_state) >= 0 ? h('button', { className: 'sn-btn sn-btn-teal sn-btn-sm', onClick: function () { approveSaga(open); } }, '✓ Approve (saga)') : null,
-            open.claim_state === 'approved' ? h('button', { className: 'sn-btn sn-btn-ink sn-btn-sm', onClick: function () { payoutSaga(open); } }, '💸 Pay (saga)') : null,
+            ['submitted', 'under_review'].indexOf(open.claim_state) >= 0 ? h('button', { className: 'sn-btn sn-btn-teal sn-btn-sm', disabled: !!sagaBusy, onClick: function () { approveSaga(open); } }, sagaBusy === open.uuid + ':claim_decision' ? 'Running…' : '✓ Approve (saga)') : null,
+            open.claim_state === 'approved' ? h('button', { className: 'sn-btn sn-btn-ink sn-btn-sm', disabled: !!sagaBusy, onClick: function () { payoutSaga(open); } }, sagaBusy === open.uuid + ':claim_payout' ? 'Running…' : '💸 Pay (saga)') : null,
             ['submitted', 'under_review'].indexOf(open.claim_state) >= 0 ? h('button', { className: 'sn-btn sn-btn-danger sn-btn-sm', onClick: function () { decide(open, 'denied'); } }, 'Deny') : null),
           h('div', { className: 'sn-mut', style: { fontSize: '11.5px', marginTop: '10px' } }, 'Approve runs the claim_decision saga (update → email; reverts to under_review on error). Pay runs claim_payout (update → receipt).'))
           : h('div', { className: 'sn-empty' }, 'Select a claim to review.')));

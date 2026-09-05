@@ -92,7 +92,7 @@ role and password — click a row to fill the form.
 |---|---|---|
 | [**Concierge AI**](apps/customer-support/concierge) | Support — AI help center grounded in your KB, agent console with suggested replies | [concierge.supero.live](https://concierge.supero.live) |
 | [**FieldOps**](apps/field-service/fieldops) | Dispatch board, mobile work orders, photo capture, on-site e-signature | [fieldops.supero.live](https://fieldops.supero.live) |
-| [**Relay**](apps/mobility/relay) | Per-diem healthcare staffing — facilities post shifts, clinicians claim them, with credential verification and timesheets | [fleetpro.supero.live](https://fleetpro.supero.live) |
+| [**Relay**](apps/mobility/relay) | Per-diem healthcare staffing — facilities post shifts, clinicians claim them, with credential verification and timesheets | [relay.supero.live](https://relay.supero.live) |
 | [**Tavola**](apps/hospitality/tavola) | Restaurant — online ordering, reservations, loyalty, live kitchen board | [tavola.supero.live](https://tavola.supero.live) |
 | [**PulseFit**](apps/fitness/pulsefit) | Gym chain — class booking, memberships, attendance, multi-location | [pulsefit.supero.live](https://pulsefit.supero.live) |
 

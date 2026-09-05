@@ -100,6 +100,56 @@ DOCUMENTS = [
 ]
 
 
+# ── MULTI-TENANT-V2 — Cascade Assurance's own book ───────────────────────────────
+# Deliberately distinct from Northwind's: different holder, different policy and
+# claim numbering (CA- / CLM-CA-), different lines and amounts. A cross-tenant leak
+# therefore shows up as a foreign prefix in the list, visible at a glance rather
+# than needing a UUID comparison.
+CASCADE_POLICIES = [
+    ("POL-CA-410882", "HomeGuard Property", "Home", 143.00, 900000.0, "active", -320, 45),
+    ("POL-CA-410915", "DriveShield Auto", "Auto", 88.50, 60000.0, "active", -150, 215),
+    ("POL-CA-411003", "Sentinel Business Pro", "Business", 210.00, 2000000.0, "active", -600, -20),
+    ("POL-CA-411177", "VitalCare Health", "Health", 265.00, 500000.0, "quoted", -8, 357),
+]
+
+CASCADE_CLAIMS = [
+    ("CLM-CA-88214", "POL-CA-410882", "Home", "Fire Damage", -30, 41200.00, 38500.00, "paid",
+     "Priya Raghavan", "Kitchen fire from a faulty range; smoke damage through the ground floor.",
+     -29, 22, "Fire marshal report attached. Cause confirmed accidental. Contents schedule agreed. Paid."),
+    ("CLM-CA-88301", "POL-CA-410915", "Auto", "Hail", -11, 6300.00, None, "under_review",
+     "Owen Sandoval", "Hailstorm dented the roof, bonnet and both wings; glass intact.",
+     -10, 35, "Storm confirmed for the date. Panel-beating quote pending; comparing against regional average."),
+    ("CLM-CA-88355", "POL-CA-411003", "Business", "Business Interruption", -45, 128000.00, None, "under_review",
+     "Priya Raghavan", "Supplier fire halted production for eleven days; lost contract revenue claimed.",
+     -44, 71, "HIGH exposure. Awaiting audited management accounts before any interim payment. Escalated to SIU."),
+    ("CLM-CA-88402", "POL-CA-410915", "Auto", "Windscreen", -5, 610.00, 610.00, "paid",
+     "Owen Sandoval", "Stone chip spread across the driver's eyeline; full replacement required.",
+     -5, 6, "Routine glass claim, approved same day."),
+    ("CLM-CA-88460", "POL-CA-410882", "Home", "Escape of Water", -3, 8800.00, None, "submitted",
+     None, "Washing-machine hose failed overnight; water through the utility room and hall.",
+     -2, 28, "Awaiting plumber report and moisture readings before assigning an adjuster."),
+]
+
+CASCADE_DOCUMENTS = [
+    ("CLM-CA-88214", "Fire marshal report", "Police Report", "verified", -29),
+    ("CLM-CA-88214", "Contents replacement schedule", "Estimate", "verified", -27),
+    ("CLM-CA-88301", "Hail damage photographs", "Photo", "received", -10),
+    ("CLM-CA-88355", "Supplier fire incident notice", "Police Report", "received", -44),
+]
+
+# tenant -> the member who owns that insurer's portal rows, plus its own book.
+TENANT_BOOKS = {
+    "northwind-mutual": {
+        "member_email": "member@sentinel.insure", "member_name": "Chris Bennett",
+        "policies": POLICIES, "claims": CLAIMS, "documents": DOCUMENTS,
+    },
+    "cascade-assurance": {
+        "member_email": "member@cascade.insure", "member_name": "Marcus Webb",
+        "policies": CASCADE_POLICIES, "claims": CASCADE_CLAIMS, "documents": CASCADE_DOCUMENTS,
+    },
+}
+
+
 # ── Access policies ──────────────────────────────────────────────────────────────
 POLICIES_DEF = [
     # DEMO-ACCOUNT-SCOPE-V1 — the claims-team account is PUBLISHED (its address and
@@ -216,53 +266,76 @@ EVENT_BINDINGS = [
 
 
 def seed_test_data(s, base, domain, tenant_uuid, progress):
-    # InsuranceProducts (public)
-    np = 0
-    for i, p in enumerate(PRODUCTS):
-        name, line, tagline, mfrom, highlights, img, pop = p
-        rec = {"name": name, "line": line, "tagline": tagline, "monthly_from": mfrom,
-               "coverage_highlights": highlights, "image": ux(img), "popular": pop, "sort_order": i,
-               "display_name": name, "description": "%s · from $%g/mo" % (line, mfrom)}
-        if seed_record(s, base, domain, "InsuranceProduct", rec, progress=progress, tenant_name="default-tenant"):
-            np += 1
-    progress.ok("Seeded %d InsuranceProducts." % np)
+    """MULTI-TENANT-V2 — seed each insurer's own book into its own tenant.
 
-    # Policies (owned by member)
-    npo = 0
-    for (num, prod, line, premium, cov, state, soff, roff) in POLICIES:
-        rec = {"policy_number": num, "product_name": prod, "line": line, "holder_name": MEMBER_NAME,
-               "holder_email": MEMBER_EMAIL, "premium": premium, "coverage_amount": cov,
-               "policy_state": state, "start_date": d(soff), "renewal_date": d(roff),
-               "owner_username": MEMBER_EMAIL, "display_name": num, "description": "%s · %s" % (prod, state)}
-        if seed_record(s, base, domain, "Policy", rec, progress=progress, tenant_name="default-tenant"):
-            npo += 1
-    progress.ok("Seeded %d Policies." % npo)
+    Every seed_record call used to hardcode tenant_name="default-tenant", which is
+    what made this a single-tenant app in practice regardless of what config.py
+    declared. Now the same code runs once per tenant with that tenant's data, so
+    Northwind and Cascade each hold their own policies, claims and documents, and
+    the platform's row scoping is what keeps them apart.
+    """
+    for tenant, book in TENANT_BOOKS.items():
+        member_email = book["member_email"]
+        member_name = book["member_name"]
 
-    # Claims (owned by member; fraud_score + internal_notes populated for RBAC contrast)
-    nc = 0
-    for (num, pol, line, ctype, ioff, claimed, approved, state, adj, desc, soff, fscore, inotes) in CLAIMS:
-        rec = {"claim_number": num, "policy_number": pol, "line": line, "holder_name": MEMBER_NAME,
-               "holder_email": MEMBER_EMAIL, "claim_type": ctype, "incident_date": d(ioff),
-               "amount_claimed": claimed, "claim_state": state, "description": desc,
-               "submitted_date": d(soff), "fraud_score": fscore, "internal_notes": inotes,
-               "owner_username": MEMBER_EMAIL, "display_name": "%s · %s" % (num, ctype)}
-        if approved is not None:
-            rec["amount_approved"] = approved
-        if adj:
-            rec["adjuster"] = adj
-        if seed_record(s, base, domain, "Claim", rec, progress=progress, tenant_name="default-tenant"):
-            nc += 1
-    progress.ok("Seeded %d Claims." % nc)
+        # Products are the public marketing catalogue — each insurer carries its own
+        # copy so a tenant's storefront and console are self-contained.
+        np = 0
+        for i, prod in enumerate(PRODUCTS):
+            name, line, tagline, mfrom, highlights, img, pop = prod
+            rec = {"name": name, "line": line, "tagline": tagline, "monthly_from": mfrom,
+                   "coverage_highlights": highlights, "image": ux(img), "popular": pop,
+                   "sort_order": i, "display_name": name,
+                   "description": "%s · from $%g/mo" % (line, mfrom)}
+            if seed_record(s, base, domain, "InsuranceProduct", rec, progress=progress,
+                           tenant_name=tenant):
+                np += 1
 
-    # ClaimDocuments (owned by member)
-    nd = 0
-    for (cnum, title, dtype, dstate, uoff) in DOCUMENTS:
-        rec = {"claim_number": cnum, "title": title, "doc_type": dtype, "doc_state": dstate,
-               "uploaded_date": d(uoff), "owner_username": MEMBER_EMAIL,
-               "display_name": title, "description": "%s · %s" % (cnum, dtype)}
-        if seed_record(s, base, domain, "ClaimDocument", rec, progress=progress, tenant_name="default-tenant"):
-            nd += 1
-    progress.ok("Seeded %d ClaimDocuments." % nd)
+        npo = 0
+        for (num, prd, line, premium, cov, state, soff, roff) in book["policies"]:
+            rec = {"policy_number": num, "product_name": prd, "line": line,
+                   "holder_name": member_name, "holder_email": member_email,
+                   "premium": premium, "coverage_amount": cov, "policy_state": state,
+                   "start_date": d(soff), "renewal_date": d(roff),
+                   "owner_username": member_email, "display_name": num,
+                   "description": "%s · %s" % (prd, state)}
+            if seed_record(s, base, domain, "Policy", rec, progress=progress,
+                           tenant_name=tenant):
+                npo += 1
+
+        # fraud_score + internal_notes are populated on purpose: they are the fields
+        # the access policy strips from a policyholder's read, so the contrast between
+        # the claims console and the portal is visible in real data.
+        nc = 0
+        for (num, pol, line, ctype, ioff, claimed, approved, state, adj, desc,
+             soff, fscore, inotes) in book["claims"]:
+            rec = {"claim_number": num, "policy_number": pol, "line": line,
+                   "holder_name": member_name, "holder_email": member_email,
+                   "claim_type": ctype, "incident_date": d(ioff),
+                   "amount_claimed": claimed, "claim_state": state, "description": desc,
+                   "submitted_date": d(soff), "fraud_score": fscore,
+                   "internal_notes": inotes, "owner_username": member_email,
+                   "display_name": "%s · %s" % (num, ctype)}
+            if approved is not None:
+                rec["amount_approved"] = approved
+            if adj:
+                rec["adjuster"] = adj
+            if seed_record(s, base, domain, "Claim", rec, progress=progress,
+                           tenant_name=tenant):
+                nc += 1
+
+        nd = 0
+        for (cnum, title, dtype, dstate, uoff) in book["documents"]:
+            rec = {"claim_number": cnum, "title": title, "doc_type": dtype,
+                   "doc_state": dstate, "uploaded_date": d(uoff),
+                   "owner_username": member_email, "display_name": title,
+                   "description": "%s · %s" % (cnum, dtype)}
+            if seed_record(s, base, domain, "ClaimDocument", rec, progress=progress,
+                           tenant_name=tenant):
+                nd += 1
+
+        progress.ok("Seeded %s: %d products, %d policies, %d claims, %d documents."
+                    % (tenant, np, npo, nc, nd))
 
 
 def main():

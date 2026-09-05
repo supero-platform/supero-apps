@@ -58,7 +58,7 @@ with role-based access enforced on the server, not in the UI.
 | App | What it is | Live |
 |---|---|---|
 | [**Ledgerline**](apps/fintech/ledgerline) | Billing — live MRR dashboards, automated dunning, multi-step expense approvals | [ledgerline.supero.live](https://ledgerline.supero.live) |
-| [**Sentinel**](apps/insurance/sentinel) | Insurance — public quote portal, claims approval sagas, insurer-only fraud scores | [sentinel.supero.live](https://sentinel.supero.live) |
+| [**Sentinel**](apps/insurance/sentinel) | Insurance — **two insurers on one deployment**, public quote portal, claims approval sagas, insurer-only fraud scores | [sentinel.supero.live](https://sentinel.supero.live) |
 
 ### 🛍️ Commerce & Sales
 

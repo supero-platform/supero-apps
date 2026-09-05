@@ -25,7 +25,7 @@ Be precise about two different credentials:
 
 The apps in this repo are **reference implementations**, not certified compliant systems.
 
-- `lumen` and `trialcore` demonstrate the *shape* of healthcare access control
+- `lumen`, `brightsmile` and `trialcore` demonstrate the *shape* of healthcare access control
   (provider-only fields, consent, adverse-event flows). They are **not HIPAA-certified**
   and **ship with no Business Associate Agreement**.
 - `sentinel` and `ledgerline` demonstrate financial workflows. They are **not** PCI or

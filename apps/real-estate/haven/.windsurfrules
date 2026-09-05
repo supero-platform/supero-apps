@@ -12,7 +12,7 @@ A premium real-estate marketplace and agent platform — find your place, tour h
 
 ## The UI pattern — read this first
 
-This app has a **bespoke full-page UI**. `ui/app.js` (~500 lines of `React.createElement`)
+This app has a **bespoke full-page UI**. `ui/app.js` (~850 lines of `React.createElement`)
 hides the platform's default shell with `#root,#app{display:none!important}` and mounts its
 **own** React tree into `#myapp-root` via `ReactDOM.createRoot(el).render(<App/>)`.
 

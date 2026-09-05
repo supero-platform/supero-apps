@@ -105,8 +105,15 @@ The point: a patient calling `GET /crud/Appointment` **with their own valid toke
 curl, bypassing the UI**, still cannot read `clinical_notes`. The server never serializes
 the field. That's the difference between access control and a `display:none`.
 
-`sentinel` hides fraud scores from claimants the same way; `ledgerline` gates internal
-billing fields. Read those `setup.py` files — the policy block is short.
+`sentinel` hides fraud scores and internal notes from claimants the same way, and
+`brightsmile` hides chart notes and diagnoses from patients. Those three —
+`lumen`, `sentinel`, `brightsmile` — are the apps that use `hidden_fields`; the rest
+scope by row (`filter_field`) rather than by field. Read their `setup.py` files, the
+policy block is short.
+
+`hidden_fields` strips a field from READ responses. Its counterpart `readonly_fields`
+strips a field from create/update payloads — use that to stop a caller writing a field
+they can see, such as a customer moving their own account to a higher plan.
 
 ## Encryption
 

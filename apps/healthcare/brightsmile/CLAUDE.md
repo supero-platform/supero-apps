@@ -12,7 +12,7 @@ Modern dental care, close to home — book online across our neighborhood clinic
 
 ## The UI pattern — read this first
 
-This app has a **bespoke full-page UI**. `ui/app.js` (~500 lines of `React.createElement`)
+This app has a **bespoke full-page UI**. `ui/app.js` (~650 lines of `React.createElement`)
 hides the platform's default shell with `#root,#app{display:none!important}` and mounts its
 **own** React tree into `#myapp-root` via `ReactDOM.createRoot(el).render(<App/>)`.
 

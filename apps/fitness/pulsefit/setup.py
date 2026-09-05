@@ -141,8 +141,14 @@ POLICIES = [
         PolicyRule(entity="club", can_read=True),
         PolicyRule(entity="class_offering", can_read=True),
         PolicyRule(entity="trainer", can_read=True),
+        # MEMBERSHIP-FIELD-GUARD-V1 — nothing stopped a member from PUTting
+        # {member_state: "active", plan: "Elite"} onto their own record, granting
+        # themselves the top tier without a payment. The join flow CREATES the
+        # record (create still carries these), and the app never updates a member
+        # afterwards, so locking them on update breaks no screen.
         PolicyRule(entity="member", can_read=True, can_create=True, can_update=True,
-                   filter_field="owner_username", filter_match="$user.name"),
+                   filter_field="owner_username", filter_match="$user.name",
+                   readonly_fields=["member_state", "plan"]),
         PolicyRule(entity="class_booking", can_read=True, can_create=True, can_update=True,
                    filter_field="owner_username", filter_match="$user.name"),
     ]),

@@ -17,7 +17,7 @@ WORKDIR /app
 
 # Install Python dependencies first (better layer caching)
 COPY --chown=supero:supero requirements.txt* ./
-RUN pip install --no-cache-dir "supero>=1.2.0" requests>=2.28.0 && \
+RUN pip install --no-cache-dir "supero==3.6.4" requests>=2.28.0 && \
     (test -f requirements.txt && pip install --no-cache-dir -r requirements.txt || true)
 
 # Copy application files

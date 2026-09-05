@@ -152,7 +152,7 @@ Supero domain, reachable over the API).
   data. Plan your status page accordingly.
 - **Scaling is free-ish.** The container is stateless, so scale horizontally as you like —
   just make sure only the one-off `--setup-only` pass ever bootstraps.
-- **Reproducible builds.** `requirements.txt` pins the SDK (`supero==3.5.946`) and `run.sh`
+- **Reproducible builds.** `requirements.txt` pins the SDK (`supero==3.6.4`) and `run.sh`
   installs from it, so a rebuild in six months gets the same SDK. Bump it deliberately.
 - **Costs.** You pay your cloud for the container; you pay Supero for platform usage. See
   [pricing](https://www.supero.dev/pricing).

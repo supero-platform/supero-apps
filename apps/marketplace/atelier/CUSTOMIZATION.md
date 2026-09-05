@@ -112,7 +112,7 @@ pip install -r requirements.txt
 
 **Docker:**
 ```bash
-# Dockerfile pins `supero==3.5.946` — rebuild to pick up latest
+# Dockerfile pins `supero==3.6.4` — rebuild to pick up latest
 docker compose build --no-cache
 docker compose up -d
 ```

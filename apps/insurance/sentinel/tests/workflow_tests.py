@@ -1,4 +1,8 @@
-# WORKFLOW_TESTS_VERSION: 2
+# WORKFLOW_TESTS_VERSION: 1
+# NOTE: marker intentionally left at 1 — supero==3.6.4's cli/run.py compares this
+# line against its own WORKFLOW_TESTS_VERSION ('1') and REGENERATES the file when
+# they differ. Bumping it here would silently undo VALIDATE_NOT_EXECUTE_V1 below
+# on the first ./run.sh. Raise it only in lockstep with the SDK constant.
 """
 workflow_tests.py — Workflow binding + execution validator.
 

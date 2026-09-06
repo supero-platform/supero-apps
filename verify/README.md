@@ -75,6 +75,44 @@ deployment, assert it in your own tests. These scripts show you the shape.
 
 ---
 
+## Why 02 probes a JSON key alias
+
+`02` sends the same request twice, once as `{"type":"claim"}` and once as
+`{"obj_type":"claim"}`. That is oddly specific for a general-purpose check, and it is
+specific on purpose.
+
+On 6 September 2026 a reviewer we asked to attack this claim found that those two
+spellings resolved differently. `/query` accepted either key. Every control that *granted*
+access read both. The three that *restricted* the response — the field guard, row scoping,
+and field hiding — read `type` alone, each behind a truthiness check. So a request carrying
+only `obj_type` passed authorization and then skipped all three, because each resolved to an
+empty string and its `if` was false.
+
+It was exploitable on the live demo by the lowest-privilege role, using a password published
+in this repository. A policyholder sending `{"obj_type":"claim"}` received `fraud_score` and
+`internal_notes` — the two fields the policy exists to hide. One renamed JSON key was the
+entire attack.
+
+**What we did, in this order:** fixed it behind a single resolver that every control on the
+request path now shares, deployed, confirmed it closed against the live demo, and only then
+added the assertion you see here. We did not write the failing test first and commit it. A
+red test in a public repository, pointed at production with published credentials, is not a
+failing test — it is a working exploit with instructions.
+
+**Why the check stays now that it passes.** This was the fourth bug of that exact shape in
+that file: a hyphen, a namespace mismatch, a lowercase call, and this. Point fixes kept
+buying the next occurrence. The resolver is the actual fix; this line is how you find out in
+ten seconds if it ever comes apart again.
+
+We would rather tell you this than have you infer it from the commit log. A proof suite that
+quietly grew a suspiciously precise check is worth less than one that says why.
+
+**What it does not cover.** That was one bypass class. Reads also reach the API through
+`PUT` echo, aggregates, `distinct` and bulk listing, and this suite does not probe those —
+the demo policyholder is refused outright on some of them, so there is nothing to assert
+from that account, and the rest are simply untested here. Treat `02` as evidence about the
+paths it names, not about every path that exists.
+
 ## They are built not to pass vacuously
 
 A check that cannot fail proves nothing. `02` aborts rather than reporting success if

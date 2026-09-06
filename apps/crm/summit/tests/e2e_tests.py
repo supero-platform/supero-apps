@@ -453,6 +453,84 @@ def test_rbac(S, ases, uses):
         except Exception as e: S.fail("rbac", "CREATE tenant_user", str(e))
         break
 
+
+def _policy_list():
+    """The raw PolicyDef list, for callers that need rules rather than the index."""
+    import setup as _s
+    for n in ("POLICIES_DEF", "POLICIES", "ACCESS_POLICIES"):
+        c = getattr(_s, n, None)
+        if isinstance(c, (list, tuple)) and c and hasattr(c[0], "role") and hasattr(c[0], "rules"):
+            return c
+    return None
+
+
+def test_field_hiding(S, ases, uses):
+    """FIELD-HIDING-V1 — assert the app's own hidden_fields, on a real response.
+
+    Until this existed, no test in this repository asserted a field-hiding claim.
+    The READMEs advertise it as the differentiator; the suites only ever exercised
+    CRUD. That is the "a check whose name asserts more than its body" pattern, and
+    leaving it in place while the docs argue against it would be indefensible.
+
+    The shape matters as much as the assertion. It compares ONE record fetched by
+    two roles, and it ABORTS rather than passing if the privileged role cannot see
+    the hidden field — because then "absent for the restricted role" would only mean
+    the field was never populated, which proves nothing at all.
+    """
+    if not S.json_output: print("\n  [5b] Field hiding\n")
+    idx = _policy_index()
+    if idx is None:
+        S.fail("rbac", "Field hiding", f"could not load POLICIES ({_POLICY_ERROR})"); return
+    if not uses:
+        S.skip("rbac", "Field hiding", "No users"); return
+
+    # Which (role, entity) pairs declare hidden_fields? Read the app's own policy.
+    targets = []
+    for pd in (_policy_list() or []):
+        for rule in (getattr(pd, "rules", None) or []):
+            hf = getattr(rule, "hidden_fields", None)
+            if hf:
+                targets.append((getattr(pd, "role", None), str(getattr(rule, "entity", "")), list(hf)))
+    if not targets:
+        S.skip("rbac", "Field hiding", "this app declares no hidden_fields"); return
+
+    for role, entity, hidden in targets:
+        restricted = next((i for e, i in uses.items() if i["role"] == role), None)
+        privileged = next((i for e, i in uses.items()
+                           if i["role"] in ("tenant_admin", "domain_admin", "project_admin")), None)
+        label = f"{entity}.{','.join(hidden)}"
+        if not restricted or not privileged:
+            S.skip("rbac", f"Field hiding {label}", f"need both {role} and an admin login"); continue
+
+        q = _qualify(_to_snake(entity.split(":")[-1]))
+        try:
+            pr = privileged["session"].get(_url(q), timeout=15)
+            rr = restricted["session"].get(_url(q), timeout=15)
+            if pr.status_code != 200 or rr.status_code != 200:
+                S.skip("rbac", f"Field hiding {label}",
+                       f"admin HTTP {pr.status_code}, {role} HTTP {rr.status_code}"); continue
+            prows = (pr.json() or {}).get("results") or []
+            rrows = (rr.json() or {}).get("results") or []
+        except Exception as e:
+            S.fail("rbac", f"Field hiding {label}", str(e)); continue
+
+        # ANTI-VACUITY. If the privileged role never sees the field, "absent for the
+        # restricted role" is not evidence — the field is simply unset. Say so and
+        # move on rather than banking a pass this run did not earn.
+        visible = [f for f in hidden if any(f in r for r in prows)]
+        if not visible:
+            S.skip("rbac", f"Field hiding {label}",
+                   "admin sees none of these fields populated - nothing to hide, not asserting")
+            continue
+
+        leaked = [f for f in visible if any(f in r for r in rrows)]
+        if leaked:
+            S.fail("rbac", f"Field hiding {label}",
+                   f"{role} CAN see {','.join(leaked)} - the policy is not enforced")
+        else:
+            S.ok("rbac", f"Field hiding {entity}: {','.join(visible)} visible to admin, "
+                         f"ABSENT for {role} ({len(rrows)} rows)")
+
 def test_public(S):
     if not S.json_output: print("\n  [6] Public\n")
     if not PUBLIC_SCHEMAS: S.skip("public", "Public", "None configured"); return
@@ -1065,6 +1143,7 @@ def main():
                 t, s = _login(u["email"], u.get("password", "Password123!"))
                 if t: uses[u["email"]] = {"token": t, "session": s, "role": u.get("role", "tenant_user"), "tenant": u.get("tenant", "default-tenant")}
         test_rbac(S, ases, uses)
+        test_field_hiding(S, ases, uses)
     if run_all or args.section == "public": test_public(S)
     if run_all or args.section == "multi-tenant": test_multi_tenant(S, ases)
     if run_all or args.section == "validation": test_validation(S, ases)

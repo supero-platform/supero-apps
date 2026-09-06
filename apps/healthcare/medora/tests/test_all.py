@@ -32,6 +32,8 @@ SUITES = [
     ("workflow_tests",     "🔗 Workflow Tests"),
     ("integration_tests",  "🔌 Integration Tests"),
     ("transactional_tests","📋 Transactional Tests"),
+    ("crud_tests",         "🗄️  CRUD Tests"),
+    ("e2e_tests",          "🌐 E2E Tests"),
 ]
 
 # Severity ordering: 1 (fail) > 2 (warn) > 0 (clean).

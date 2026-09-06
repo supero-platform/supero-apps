@@ -26,9 +26,17 @@ class AppConfig:
     admin_password: str = field(default_factory=lambda: os.environ.get("SUPERO_PASSWORD") or _require_password())
     project_name: str   = field(default_factory=lambda: os.getenv("SUPERO_PROJECT", "sentinel"))
 
-    # MULTI-TENANT-V2 — two insurers on one deployment. Naming them anything other
-    # than "default-tenant" is what makes this a multi-tenant app: the platform
-    # infers the flag from the presence of business tenants. Northwind is the
+    # MULTI-TENANT-V2 — two insurers on one deployment.
+    #
+    # CORRECTION: an earlier version of this comment said the platform "infers the
+    # flag from the presence of business tenants". It does not, and relying on that
+    # is why the live demo reported itself as single-tenant. The UI flag is resolved
+    # by run.py from SUPERO_IS_MULTI_TENANT in .env, falling back to the project
+    # record on the platform — declaring tenants here does not set either. The
+    # tenants below are still what create real isolation server-side; they just do
+    # not switch on the UI chrome. Set SUPERO_IS_MULTI_TENANT / the tenant nouns in
+    # .env.example (already done) so the interface shows the tenancy the API
+    # enforces. Northwind is the
     # primary demo; Cascade exists so cross-tenant isolation can be demonstrated
     # rather than asserted — sign in as one and the other's book is not reachable,
     # not even by calling the API directly with a valid token.

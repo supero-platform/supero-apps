@@ -74,7 +74,13 @@ jobs:
 
       - name: Docs teach the real schema DSL
         run: |
-          if git grep -InE '"required"\s*:\s*True|"parent"\s*:\s*"|RuleDef\(|access="read"|schema="[A-Z]' -- 'docs/**'; then
+          # `"required": True` is BANNED in an entity attribute dict (the real key is
+          # `mandatory`) but is CORRECT inside a workflow `input_schema` — two different
+          # DSLs. The old pattern matched the bare key and so failed on
+          # services-and-workflows.md, whose workflow block is copied verbatim from
+          # apps/insurance/sentinel/setup.py and is right. Anchor on `"name"` so this only
+          # fires on the entity-attribute shape it was written to catch.
+          if git grep -InE '"name"[^\n]*"required"\s*:\s*True|"parent"\s*:\s*"|RuleDef\(|access="read"|schema="[A-Z]' -- 'docs/**'; then
             echo "::error::Docs use a schema/policy DSL the apps do not. Use mandatory/parent_type and PolicyRule(entity=..., can_read=...)."
             exit 1
           fi

@@ -58,7 +58,7 @@ docker push yourregistry/pawspa:v1.0.0
 # Run on a remote host
 docker run -d \
   --name pawspa \
-  -p 5648:5648 \
+  -p 5707:5707 \
   --env-file .env \
   --restart unless-stopped \
   yourregistry/pawspa:v1.0.0

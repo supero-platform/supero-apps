@@ -44,7 +44,11 @@ class AppConfig:
     # and REAL social posting: instagram (publish_post), linkedin (create_post), x_social (post_tweet),
     # youtube (upload_video — publishes a video file to the channel).
     # Posting gracefully falls back to "simulated" until each channel's OAuth token is configured.
-    services: list = field(default_factory=lambda: ["email", "slack", "ai", "workflows",
-                                                    "instagram", "linkedin", "x_social", "youtube"])
+    # "workflows" MUST be last: ensure_event_bindings() runs when it registers and
+    # needs every other service already present. This was masked until the
+    # integration suite could read the list at all.
+    services: list = field(default_factory=lambda: ["email", "slack", "ai",
+                                                    "instagram", "linkedin", "x_social", "youtube",
+                                                    "workflows"])
 
     public_schemas: list = field(default_factory=lambda: ["plan"])

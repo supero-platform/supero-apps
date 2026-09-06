@@ -42,6 +42,9 @@ class AppConfig:
 
     # email + sms reminders, ai (symptom → suggested service helper), workflows,
     # google_calendar (a booked appointment drops a real event on the clinic calendar).
-    services: list = field(default_factory=lambda: ["email", "sms", "ai", "workflows", "google_calendar"])
+    # "workflows" MUST be last: ensure_event_bindings() runs when it registers and
+    # needs every other service already present. This was masked until the
+    # integration suite could read the list at all.
+    services: list = field(default_factory=lambda: ["email", "sms", "ai", "google_calendar", "workflows"])
 
     public_schemas: list = field(default_factory=lambda: ["provider", "clinic_service"])

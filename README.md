@@ -218,8 +218,11 @@ Then check it against your own deployment rather than taking this page's word fo
 **Zero build.** React and Tailwind load from CDN. No `node_modules`, no bundler, no
 `npm install`. Edit `ui/app.js`, refresh the page.
 
-Each app carries real functional tests — `crud_tests.py`, `integration_tests.py`,
-`e2e_tests.py`, `workflow_tests.py` — that run against *your* domain:
+Each app carries five suites. Three are static validators that check the bundle's own
+consistency and need nothing running. Two — `crud_tests.py` and `e2e_tests.py` — make real
+HTTP calls against *your* domain, and are the ones that assert the access-control claims.
+The live pair skip with a stated reason when no app is serving, so a fresh clone stays
+clean:
 
 ```bash
 cd apps/healthcare/lumen && ./tests/run_tests.sh

@@ -28,11 +28,48 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
+# SUITES-COMPLETENESS-V1 — crud_tests and e2e_tests were missing from this list.
+#
+# README.md names four suites, including these two, as tests that "run against your
+# domain", and points the reader at ./tests/run_tests.sh, which defaults to --test-all
+# and lands here. So the documented command ran three suites, and the two that make
+# real HTTP calls — the only two that touch the API at all — were never among them.
+# The other three are static analysers over source files.
+#
+# That is the same shape as the defects this suite exists to catch: a command whose
+# name asserts more than it does. It got worse once the field-hiding assertions landed
+# in e2e_tests, because the check for the repo's headline claim lived in a suite the
+# documented command did not run.
+#
+# `live` marks a suite that needs a reachable server. Those SKIP with a stated reason
+# when there is nothing to talk to, rather than failing — running the static suites on
+# a fresh clone with no domain must stay clean.
 SUITES = [
-    ("workflow_tests",     "🔗 Workflow Tests"),
-    ("integration_tests",  "🔌 Integration Tests"),
-    ("transactional_tests","📋 Transactional Tests"),
+    ("workflow_tests",     "🔗 Workflow Tests",        False),
+    ("integration_tests",  "🔌 Integration Tests",     False),
+    ("transactional_tests","📋 Transactional Tests",   False),
+    ("crud_tests",         "🗃  CRUD Tests (live)",     True),
+    ("e2e_tests",          "🌐 End-to-End Tests (live)", True),
 ]
+
+
+def _server_is_reachable():
+    """True when a local app is actually serving, so the live suites can run."""
+    import os, socket, re as _re
+    port = os.environ.get("PORT") or os.environ.get("UI_PORT")
+    if not port:
+        env = HERE.parent / ".env"
+        if env.exists():
+            m = _re.search(r"^PORT=(\d+)", env.read_text(), _re.M)
+            if m:
+                port = m.group(1)
+    if not port:
+        return False, "no PORT in environment or .env"
+    try:
+        with socket.create_connection(("127.0.0.1", int(port)), timeout=2):
+            return True, None
+    except OSError:
+        return False, f"nothing listening on localhost:{port} — start the app first"
 
 # Severity ordering: 1 (fail) > 2 (warn) > 0 (clean).
 # We can't just take max() because 1 < 2 numerically.
@@ -137,7 +174,15 @@ def main():
     # We always run suites with --json internally for aggregation, then
     # re-render in the chosen output format.
     suite_results = []
-    for name, title in SUITES:
+    live_ok, live_why = _server_is_reachable()
+    for name, title, needs_live in SUITES:
+        if needs_live and not live_ok:
+            print(f"  - {title}: skipped — {live_why}")
+            suite_results.append((name, title, 0, "", "", {
+                "summary": {"pass": 0, "fail": 0, "warn": 0, "skip": 1},
+                "tests": [{"section": "suite", "name": name, "status": "skip",
+                           "detail": live_why}]}))
+            continue
         code, stdout, stderr = _run_suite(name, args, want_json=True)
         parsed = None
         if stdout:

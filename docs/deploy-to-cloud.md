@@ -162,3 +162,7 @@ Supero domain, reachable over the API).
 Point your domain at whatever you deployed (Cloud Run/ECS/Fly/Render all support custom
 domains). Nothing in the app is tied to `*.supero.live` — that's only for apps you ship to
 the managed URL. See [deploy.md](deploy.md).
+
+---
+
+📖 **This page is the short version.** For the full cloud-deployment guide, see [docs.supero.dev/deployment/cloud-deployment](https://docs.supero.dev/deployment/cloud-deployment).

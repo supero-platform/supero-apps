@@ -170,3 +170,7 @@ The model above is easiest to *see* in a running app:
 
 Best way to believe the field-stripping claim: run `lumen`, sign in as the patient, and
 `curl` the appointment endpoint with their token. The notes aren't there.
+
+---
+
+📖 **This page is the short version.** For the full architecture reference, see [docs.supero.dev/developers/overview/architecture](https://docs.supero.dev/developers/overview/architecture).

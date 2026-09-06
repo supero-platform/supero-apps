@@ -171,3 +171,7 @@ Standard HTTP status codes. Bodies are JSON with `error` and `message`:
 | 403 | Authenticated but not permitted (check your role / policies) |
 | 404 | No such object |
 | 405 | Wrong method for that path |
+
+---
+
+📖 **This page is the short version.** For the complete API reference, see [docs.supero.dev/developers/api-reference/overview](https://docs.supero.dev/developers/api-reference/overview).

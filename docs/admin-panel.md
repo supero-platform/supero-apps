@@ -38,3 +38,7 @@ Most apps here serve both:
 `concierge` is the clearest example: a customer sees the help center and their own
 tickets; an agent sees the queue, AI-suggested replies, macros, and analytics. Same app,
 same data, different roles.
+
+---
+
+📖 **This page is the short version.** For the full admin-panel guide, see [docs.supero.dev/managing-your-app/admin-panel](https://docs.supero.dev/managing-your-app/admin-panel).

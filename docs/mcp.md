@@ -198,3 +198,7 @@ pushes the schema to your domain and checks it landed.
 
 Hitting something else? [Open an issue](https://github.com/supero-platform/supero-apps/issues) —
 MCP is where we're investing most.
+
+---
+
+📖 **This page is the short version.** For the full MCP guide, see [docs.supero.dev/developers/mcp/overview](https://docs.supero.dev/developers/mcp/overview).

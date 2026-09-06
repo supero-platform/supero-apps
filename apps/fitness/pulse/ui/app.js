@@ -271,7 +271,7 @@
   // ───────────────────────── AUTH ─────────────────────────
   function AuthScreen(props) {
     var [mode, setMode] = React.useState(props.initialMode || 'login');   // 'login' | 'signup'
-    var [email, setEmail] = React.useState('testapp@test.com');
+    var [email, setEmail] = React.useState('admin@pulsefitness.co');
     var [pw, setPw] = React.useState('Password123!');
     var [fullName, setFullName] = React.useState('');
     var [busy, setBusy] = React.useState(false);

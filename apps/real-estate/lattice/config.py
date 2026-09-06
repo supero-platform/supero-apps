@@ -52,9 +52,6 @@ class AppConfig:
         # on default-tenant). Use this to switch between PM companies.
         {"email": "admin@lattice.app", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Lattice Super Admin", "tenant": "default-tenant"},
-        # Platform tester — keep this account in every app:
-        {"email": "testapp@test.com", "password": "Password123!", "role": "developer",
-         "full_name": "App Tester", "tenant": "default-tenant"},
         # Per-company property managers (staff = tenant_admin in their own company):
         {"email": "manager@summit.app", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Sarah Chen", "tenant": "summit-residential"},

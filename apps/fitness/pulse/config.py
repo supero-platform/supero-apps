@@ -47,9 +47,6 @@ class AppConfig:
         # HQ super-admin — tenant_admin on default-tenant → can switch tenants (whole chain):
         {"email": "admin@pulsefitness.co", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Chain Director", "tenant": "default-tenant"},
-        # Platform tester — keep this account in every app (also a chain-wide admin view):
-        {"email": "testapp@test.com", "password": "Password123!", "role": "developer",
-         "full_name": "App Tester", "tenant": "default-tenant"},
         # Location managers (staff = tenant_admin, scoped to their location tenant):
         {"email": "manager.downtown@pulsefitness.co", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Dana Cole", "tenant": "downtown"},

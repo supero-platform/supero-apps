@@ -55,9 +55,6 @@ class AppConfig:
         # Chain admin (super-admin): tenant_admin on default-tenant → sees all + switcher.
         {"email": "admin@medora.health", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Network Administrator", "tenant": "default-tenant"},
-        # Platform tester — keep this account in every app (logs into a real site):
-        {"email": "testapp@test.com", "password": "Password123!", "role": "developer",
-         "full_name": "App Tester", "tenant": "default-tenant"},
         # Site staff / doctors (tenant_admin scoped to their hospital/clinic):
         {"email": "drchen@mercy-general.medora.health", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Dr. Evelyn Chen", "tenant": "mercy-general"},

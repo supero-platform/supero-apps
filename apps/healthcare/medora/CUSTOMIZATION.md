@@ -19,7 +19,7 @@ Both runtimes are equally supported. Pick based on your environment.
 run.bat             # Windows
 ```
 
-First run creates `.venv`, installs `supero` SDK, runs platform bootstrap (schemas, seed data, policies), then starts the server at `http://localhost:5648`.
+First run creates `.venv`, installs `supero` SDK, runs platform bootstrap (schemas, seed data, policies), then starts the server at `http://localhost:5712`.
 
 Subsequent runs skip setup if already configured. Force re-setup with `./run.sh --reset`.
 
@@ -42,7 +42,7 @@ docker compose restart      # re-run bootstrap + restart
 docker compose down         # stop and remove
 ```
 
-Container image is ~200MB (python:3.11-slim base), runs as non-root user, includes healthcheck on port 5648.
+Container image is ~200MB (python:3.11-slim base), runs as non-root user, includes healthcheck on port 5712.
 
 **Production note**: the shipped `docker-compose.yml` mounts `schemas.py`, `setup.py`, `config.py`, and `ui/` as volumes for hot-reload during development. For production deploys, comment out the `volumes:` block so the image is self-contained and immutable.
 
@@ -472,7 +472,7 @@ SUPERO_ADMIN_EMAIL=admin@example.com
 SUPERO_API_KEY=ak_...                       # project-scoped key (auto-written)
 SUPERO_TENANT_NOUN_SINGULAR=Salon           # multi-tenant only
 SUPERO_TENANT_NOUN_PLURAL=Salons
-PORT=5648                                    # local web server port
+PORT=5712                                    # local web server port
 ```
 
 Never commit `.env` — it contains secrets. Use `.env.example` for templates.

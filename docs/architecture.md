@@ -109,8 +109,27 @@ PolicyDef(role="tenant_user", default_access="none", rules=[
 - **Row scoping** — which *records* this role may touch.
 - **Field stripping** — which *columns* are removed from the response.
 
-`default_access="none"` means deny-by-default: a role sees nothing until a rule grants it.
-That's the safe direction — forgetting a rule fails closed, not open.
+`default_access="none"` means deny-by-default for **writes**: a role cannot create, update
+or delete until a rule grants it.
+
+**Reads are different, and this is the sentence to read twice.** Entity-level read
+enforcement is a separate, opt-in gate that is **off by default**. With it off, an entity
+you never wrote a rule for is **readable**, not denied. Forgetting a rule therefore fails
+*open* on reads.
+
+What still applies to reads, regardless of that gate — and what the scripts in
+[`verify/`](../verify/) actually check:
+
+| Mechanism | Applies to reads by default? |
+|---|---|
+| `hidden_fields` — column stripping | **Yes.** The field is removed from the response. |
+| `filter_field` — row scoping | **Yes.** You see only rows matching the filter. |
+| Tenant isolation | **Yes.** Another tenant's record is refused. |
+| `default_access="none"` denying an **unlisted entity** on read | **No.** Off by default. |
+
+So: declare a rule for every entity you expose, and do not rely on the absence of a rule to
+protect it. If you need an entity to be unreadable, say so explicitly rather than omitting
+it — and assert it in a test against your own deployment.
 
 ## Services and workflows
 

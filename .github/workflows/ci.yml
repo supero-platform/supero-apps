@@ -104,6 +104,20 @@ jobs:
             if [ -f "$d.env.example" ] && grep -qE '^SUPERO_PASSWORD=.+' "$d.env.example"; then
               echo "::error file=$d.env.example::must ship blank"; fail=1
             fi
+            # CONTRIBUTING.md:15 requires tests/ in every app. This loop did not check
+            # it, which is precisely why pulse, helix and lattice ship without one while
+            # CI stays green — the rule was written and the enforcement was not.
+            #
+            # WARNING, not error, ON PURPOSE. Three apps legitimately have no suite yet
+            # (issue #5). Failing today turns main red for a gap we already know about
+            # and are tracking, which trains people to ignore the signal. Flip the
+            # `echo ::warning` below to `::error` and add `fail=1` once those three land
+            # — that is the last step of #5, not a separate task.
+            [ -d "${d}tests" ] || echo "::warning file=$d::missing tests/ directory (CONTRIBUTING.md requires it)"
+            # A seeded demo credential must not reach a forker's own domain.
+            if grep -rqE 'testapp@test\.com' "$d" 2>/dev/null; then
+              echo "::error file=$d::testapp@test.com is a shared demo credential and must not ship"; fail=1
+            fi
           done
           exit $fail
 

@@ -1,0 +1,80 @@
+name: Publish to MCP Registry
+
+# Lists the Supero MCP server in the official Model Context Protocol registry
+# (registry.modelcontextprotocol.io) so it is discoverable from MCP clients.
+#
+# WHY A WORKFLOW RATHER THAN A ONE-OFF PUBLISH.
+# `mcp-publisher login github` is an interactive browser flow, which cannot run
+# unattended. `github-oidc` authenticates from inside Actions using the repository's
+# own identity — no token to store, nothing to rotate — and it proves ownership of
+# the `io.github.supero-platform/*` namespace because the workflow runs in that org.
+# Running it on release also means the registry entry stays in step with the repo
+# instead of drifting after the first publish.
+#
+# Publishing is gated: it runs on a published release, or manually via the Actions
+# tab. It never runs on a push.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Validate only, do not publish'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write   # required for github-oidc authentication
+
+jobs:
+  publish:
+    name: Validate and publish server.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mcp-publisher
+        run: |
+          VERSION="1.8.1"
+          curl -sL -o mcp-publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v${VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+          chmod +x mcp-publisher
+          ./mcp-publisher --help > /dev/null
+
+      - name: Check server.json matches the live server
+        run: |
+          # The registry entry advertises an endpoint and a version. If those drift
+          # from what api.supero.dev actually reports, the listing is wrong — better
+          # to fail here than to publish a stale entry.
+          # curl, not urllib: Cloudflare rejects the default Python user-agent on
+          # api.supero.dev with HTTP 403.
+          curl -sS https://api.supero.dev/mcp/v1/info -o live-info.json
+          python3 - <<'PY'
+          import json
+          live = json.load(open('live-info.json'))
+          cfg  = json.load(open('server.json'))
+          url  = cfg['remotes'][0]['url']
+          expected = "https://api.supero.dev" + live['endpoint']
+          assert url == expected, f"server.json url {url!r} != live endpoint {expected!r}"
+          assert cfg['version'] == live['version'], \
+              f"server.json version {cfg['version']!r} != live {live['version']!r}"
+          print(f"OK: {url}  version {cfg['version']}  protocol {live['protocol_version']}")
+          PY
+
+      - name: Validate server.json
+        run: ./mcp-publisher validate
+
+      - name: Authenticate
+        if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish
+        if: ${{ github.event_name == 'release' || inputs.dry_run == false }}
+        run: ./mcp-publisher publish
+
+      - name: Dry run notice
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: echo "Validated only. Re-run with dry_run unchecked to publish."

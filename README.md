@@ -140,8 +140,9 @@ role and password — click a row to fill the form.
 Every app ships a `CLAUDE.md` (and `.cursorrules` / `.windsurfrules`) so your assistant
 understands the codebase before it touches a line.
 
-You can also connect your editor directly to the platform over **MCP** and have it design
-schemas, generate UI, and deploy:
+You can also connect your editor directly to the platform over **MCP** — **64 tools** that
+let an assistant design schemas, run CRUD, connect a database, and take an app from a
+sentence to a live URL:
 
 ```bash
 claude mcp add --transport http supero https://api.supero.dev/mcp/v1/messages \
@@ -152,7 +153,21 @@ Then just ask:
 
 > *"Add a waitlist to the clinic app — patients join, staff promote them when a slot opens."*
 
-See [docs/mcp.md](docs/mcp.md) for getting a key and the full tool list.
+**The interesting part is what the assistant is allowed to do.** An MCP call carries *your*
+credential to the same API a browser would use — no service account, no elevated path. So
+the agent inherits your permissions rather than getting its own, and the row scoping and
+field hiding above apply to it identically. An agent you point at a customer's data is
+bounded by the same policy the customer is.
+
+The server is live and you can inspect it without a key:
+
+```bash
+curl https://api.supero.dev/mcp/v1/info
+```
+
+[docs/mcp.md](docs/mcp.md) covers getting a key and the tool families. The complete
+reference, every parameter, is at
+[docs.supero.dev/developers/mcp/tool-reference](https://docs.supero.dev/developers/mcp/tool-reference).
 
 ---
 

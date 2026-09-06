@@ -87,45 +87,79 @@ Two methods, both tenant-scoped:
 
 | Method | Header | Notes |
 |---|---|---|
-| API key | `X-API-Key: ak_...` | Scoped to one project. Revocable. Best for editors. |
+| API key | `X-API-Key: ak_...` | Revocable. Best for editors. |
 | JWT | `Authorization: Bearer <jwt>` | Short-lived. Best for programmatic use. |
 
-Your key carries its own scope. **The assistant can only ever touch the domain, project,
-and tenant that key is scoped to** — it cannot reach another customer's data, and it's
-checked against your roles on every call. Your AI inherits your permissions, not more.
+**Your key carries its own scope, and the scope depends on how it was issued.** A key tied
+to a specific project and tenant acts as a tenant user; one issued against the default
+project and tenant resolves to a domain administrator. Check what yours actually grants
+rather than assuming:
+
+```bash
+curl -X POST https://api.supero.dev/mcp/v1/messages \
+  -H "X-API-Key: ak_your_key_here" -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"apikey_get_scope","arguments":{}}}'
+```
+
+**The AI inherits your permissions — it does not get its own.** An MCP call carries your
+credential to the same API a browser would use. There is no service account behind it and
+no elevated path, so the assistant cannot read something you could not read yourself. Its
+reads go through the same access-policy code as a direct API call, which you can check with
+[`verify/02-rbac-enforcement.sh`](../verify/02-rbac-enforcement.sh).
+
+That is a statement about escalation, and it is the honest form of the claim. It is not a
+promise that every field on every object type is covered in every configuration — access
+rules are yours to declare, and a rule you did not write is one the AI is not bound by
+either. Field hiding also covers types you declare in your own schemas; platform-managed
+types (accounts, API keys, domains, projects, tenants) are governed by role permissions,
+which is a different mechanism.
 
 ---
 
 ## What the tools do
 
-Roughly four tiers:
+**64 tools across six families.** Counted from the source, and the build count is
+confirmed by the live endpoint's own `build_tool_count`.
 
-| Tier | Examples | For |
-|---|---|---|
-| **Data** | `crud_search`, `crud_get`, `crud_create` | Read/write records. `object_type` is a parameter. |
-| **Schema** | inspect, upload, resolve | Design and evolve the data model |
-| **Build** | plan, generate, validate, go-live | Generate an app end to end |
-| **System** | health, info | Introspection |
+| Family | Count | Examples | For |
+|---|---|---|---|
+| `crud_*` | 5 | `crud_search`, `crud_get`, `crud_create`, `crud_update`, `crud_delete` | Read and write records. `object_type` is a parameter. |
+| `schema_*` | 8 | `schema_list`, `schema_save`, `schema_validate`, `schema_update` | Design and evolve the data model |
+| `connector_*` | 11 | `connector_discover`, `connector_test`, `connector_run`, `connector_status` | Bring your own database |
+| `sdk_*` | 4 | `sdk_generate`, `sdk_download`, `sdk_list`, `sdk_status` | Typed client generation |
+| `rbac_*` / `apikey_*` | 3 | `rbac_check_permission`, `rbac_get_my_access`, `apikey_get_scope` | Ask what this key is allowed to do |
+| `build_*` | 33 | `build_plan`, `build_create_project`, `build_go_live`, `build_doctor` | Take an app from nothing to a live URL |
 
-On connect, the server sends onboarding instructions, so a capable assistant orients
-itself without you pasting a prompt.
+A further 15 `infra_*` tools exist and are **off by default**, behind
+`MCP_ENABLE_INFRA_TOOLS`. They expose source-read, database and git operations. Leave them
+off unless you know exactly why you are turning them on.
 
+**Full reference with every parameter:**
+[docs.supero.dev/developers/mcp/tool-reference](https://docs.supero.dev/developers/mcp/tool-reference)
+
+On connect, the server sends onboarding instructions, so a capable assistant orients itself
+without you pasting a prompt.
 
 ### The Build tier (for agent builders)
 
-Beyond `crud_*`, the server exposes a **Build** tier so an agent can take an app from
-nothing to a live URL. The exact set evolves, but the shape is:
+Thirty-three tools, enough for an agent to go from a sentence to a deployed URL without a
+human touching a file. The shape of a full run:
 
-| Tool | Does |
+| Stage | Tools |
 |---|---|
-| `build_plan` | turn a description into a schema + app plan |
-| `build_generate` | generate schemas, policies, and UI from the plan |
-| `build_validate` | check the generated app against the live platform before shipping |
-| `build_go_live` | deploy to a managed URL |
-| `build_teardown` | tear a build down |
+| Plan | `build_plan`, `build_get_examples`, `build_get_skills`, `build_list_capabilities` |
+| Create | `build_create_project`, `build_update_project`, `build_replace_project` |
+| Data | `build_connect_data_source`, `build_discover_source`, `build_bind_data_source`, `build_list_bound_schemas` |
+| Services | `build_configure_services`, `build_recommend_integrations`, `build_get_service_contract` |
+| Check | `build_validate`, `build_doctor`, `build_smoke_test`, `build_e2e_test` |
+| Ship | `build_stage_bundle`, `build_publish`, `build_deploy`, `build_go_live` |
+| Operate | `build_logs`, `build_deploy_status`, `build_set_project_mode`, `build_teardown` |
 
-Enumerate the current, exact tool list for your key with `tools/list` (below) rather than
-hardcoding names — the Build tier is where the platform iterates most.
+Enumerate the exact list for your own key rather than hardcoding names — this tier is where
+the platform iterates most.
+
+List them yourself once connected:
 
 List them yourself once connected:
 
@@ -158,7 +192,8 @@ pushes the schema to your domain and checks it landed.
 - **No OAuth yet** → no Claude Desktop connector. Claude Code and Cursor work.
 - **Transport is JSON-RPC over HTTP POST.** Stateless. There's no SSE stream, so clients
   that require the SSE leg won't attach.
-- **Protocol pinned to `2024-11-05`.**
+- **Protocol pinned to `2024-11-05`.** The spec has moved on since; clients that
+  negotiate a newer revision and refuse to fall back will not attach.
 - **The instruction payload is large.** Some clients with tight context budgets will feel it.
 
 Hitting something else? [Open an issue](https://github.com/supero-platform/supero-apps/issues) —

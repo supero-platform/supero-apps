@@ -104,16 +104,20 @@ jobs:
             if [ -f "$d.env.example" ] && grep -qE '^SUPERO_PASSWORD=.+' "$d.env.example"; then
               echo "::error file=$d.env.example::must ship blank"; fail=1
             fi
-            # CONTRIBUTING.md:15 requires tests/ in every app. This loop did not check
-            # it, which is precisely why pulse, helix and lattice ship without one while
-            # CI stays green — the rule was written and the enforcement was not.
+            # CONTRIBUTING.md:15 requires tests/ in every app, and the PR template asks
+            # that ./tests/run_tests.sh pass. This loop checked neither, which is exactly
+            # why pulse, helix and lattice once shipped with no suite while CI stayed
+            # green — the rule was written and the enforcement was not.
             #
-            # WARNING, not error, ON PURPOSE. Three apps legitimately have no suite yet
-            # (issue #5). Failing today turns main red for a gap we already know about
-            # and are tracking, which trains people to ignore the signal. Flip the
-            # `echo ::warning` below to `::error` and add `fail=1` once those three land
-            # — that is the last step of #5, not a separate task.
-            [ -d "${d}tests" ] || echo "::warning file=$d::missing tests/ directory (CONTRIBUTING.md requires it)"
+            # This landed as a ::warning first, deliberately: three apps had no suite yet,
+            # and failing main over a gap already tracked in an issue only teaches people
+            # to ignore the signal. Those three now ship 11 test files each, so all 19 apps
+            # satisfy this — checked across every app before flipping it to an error.
+            #
+            # It tests for the RUNNER, not the directory. An empty tests/ would pass a -d
+            # check while still leaving the PR template's instruction impossible to carry
+            # out, which is the same shape of defect this whole job exists to catch.
+            [ -f "${d}tests/run_tests.sh" ] || { echo "::error file=$d::missing tests/run_tests.sh (CONTRIBUTING.md requires tests/)"; fail=1; }
             # A seeded demo credential must not reach a forker's own domain.
             if grep -rqE 'testapp@test\.com' "$d" 2>/dev/null; then
               echo "::error file=$d::testapp@test.com is a shared demo credential and must not ship"; fail=1

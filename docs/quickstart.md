@@ -134,7 +134,10 @@ can run several at once.
 **Want to start over** — `./run.sh --reset` re-runs bootstrap. To wipe the domain
 entirely, delete it from the admin panel.
 
-**`from supero import *` fails** — known SDK bug. Use `from supero import Supero`.
+**Import style** — prefer `from supero import Supero`: it is explicit about what you are
+pulling into your namespace. A bare `from supero import *` also works. (This entry used to
+report the star import as a known bug. It raised `AttributeError` on 3.5.x; both forms work
+on the `supero==3.6.4` these apps pin.)
 
 ---
 

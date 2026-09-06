@@ -282,7 +282,7 @@
           h('div', { className: 'mb-2' }, 'Demo logins (password: Password123!)'),
           h('div', { className: 'flex flex-wrap justify-center gap-2' },
             [['Chain admin', 'admin@medora.health'], ['Site doctor', 'drchen@mercy-general.medora.health'],
-             ['Patient', 'maria@example.com'], ['Tester', 'testapp@test.com']].map(function (q) {
+             ['Patient', 'maria@example.com']].map(function (q) {
               return h('button', {
                 key: q[1], type: 'button', onClick: function () { quick(q[1]); },
                 className: 'px-2 py-1 rounded-lg bg-white border border-slate-200 hover:border-teal-400',

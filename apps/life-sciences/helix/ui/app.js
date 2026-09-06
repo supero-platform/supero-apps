@@ -74,7 +74,7 @@
     var inp = { width: '100%', border: '1px solid ' + LINE, borderRadius: 10, padding: '11px 13px',
       marginBottom: 12, fontSize: 14, outline: 'none', boxSizing: 'border-box' };
     var quick = [['HQ Admin', 'admin@helix.com'], ['Boston PI', 'boston.coord@helix.com'],
-      ['Austin Investigator', 'austin.investigator@helix.com'], ['Tester', 'testapp@test.com']];
+      ['Austin Investigator', 'austin.investigator@helix.com']];
     return h('div', { style: { minHeight: '100vh', display: 'flex', background:
         'linear-gradient(135deg,#0f172a 0%,#0f766e 100%)' } },
       h('div', { style: { flex: 1, display: 'none' } }),

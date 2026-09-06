@@ -57,7 +57,7 @@ SUPERO_PROJECT=your-project-slug   # Project slug (not display name)
 SUPERO_API_KEY=ak_...              # API key for bootstrap
 SUPERO_DEFAULT_TENANT=default-tenant
 PUBLIC_SCHEMAS=vehicle,listing     # Comma-separated public schemas (optional)
-PORT=5648                          # Server port
+PORT=5713                          # Server port
 ```
 
 ## Data Access (SuperoClient)
@@ -468,7 +468,7 @@ myClient.login(myClient.domain, 'user@example.com', 'password', myClient.project
 # Start the app
 ./run.sh
 
-# App runs at http://localhost:5648 (or PORT from .env)
+# App runs at http://localhost:5713 (or PORT from .env)
 # API proxied to Supero platform automatically
 # Login with credentials from setup.py seed data (check USERS list)
 

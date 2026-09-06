@@ -44,9 +44,6 @@ class AppConfig:
         # HQ super-admin — sponsor / HQ oversight. tenant_admin on default-tenant.
         {"email": "admin@helix.com", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Helix HQ Admin", "tenant": "default-tenant"},
-        # Platform tester — keep this account in every app:
-        {"email": "testapp@test.com", "password": "Password123!", "role": "developer",
-         "full_name": "App Tester", "tenant": "default-tenant"},
         # Per-site coordinators (tenant_admin within their own site).
         {"email": "boston.coord@helix.com", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Dr. Elena Marsh", "tenant": "site-boston"},

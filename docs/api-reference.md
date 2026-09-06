@@ -48,8 +48,9 @@ POST /api/v1/auth/login
 ```
 Returns an access token. Send it as `Authorization: Bearer <token>` on subsequent calls.
 
-> Note: use `from supero import Supero` — a bare `from supero import *` currently raises
-> `AttributeError` (known SDK bug, being fixed).
+> Note: prefer `from supero import Supero` — it is explicit about what you are importing.
+> A bare `from supero import *` works too on the `supero==3.6.4` these apps pin; it raised
+> `AttributeError` on 3.5.x, which is what this note used to warn about.
 
 ---
 

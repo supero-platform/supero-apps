@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.supero-platform/supero",
+  "title": "Supero",
+  "description": "Multi-tenant application platform over MCP. Design schemas, run CRUD, and build a working app end to end — against a real domain, with row- and field-level access control enforced server-side on every call.",
+  "websiteUrl": "https://docs.supero.dev/developers/mcp/overview",
+  "repository": {
+    "url": "https://github.com/supero-platform/supero-apps",
+    "source": "github"
+  },
+  "version": "2.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.supero.dev/mcp/v1/messages",
+      "headers": [
+        {
+          "name": "X-API-Key",
+          "description": "Supero project API key (ak_...). Create one at app.supero.dev under your project's API keys. The key carries its own scope: every tool call is evaluated against the roles attached to it.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

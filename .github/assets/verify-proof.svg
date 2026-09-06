@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="426" viewBox="0 0 1000 426" role="img" aria-label="Terminal output of verify/02-rbac-enforcement.sh: three PASS lines showing fraud_score present for staff and absent for the policyholder">
+<rect width="1000" height="426" rx="10" fill="#0B1836"/>
+<rect width="1000" height="38" rx="10" fill="#0E1E42"/>
+<rect y="28" width="1000" height="10" fill="#0E1E42"/>
+<line x1="0" y1="38" x2="1000" y2="38" stroke="#1E3160" stroke-width="1"/>
+<circle cx="20" cy="19" r="5" fill="#FF5F57"/>
+<circle cx="38" cy="19" r="5" fill="#FEBC2E"/>
+<circle cx="56" cy="19" r="5" fill="#28C840"/>
+<text x="500.0" y="23" fill="#7286AC" font-size="12" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">verify — 02-rbac-enforcement.sh</text>
+<text x="26" y="66" fill="#2DD4DE" font-size="13.5" font-weight="600" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">$ cd supero-apps/verify &amp;&amp; ./02-rbac-enforcement.sh</text>
+<text x="26" y="108" fill="#F2F6FF" font-size="13.5" font-weight="400" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">02 · Field-level access control</text>
+<text x="26" y="129" fill="#7286AC" font-size="13.5" font-weight="400" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">https://api.supero.dev/api/v1/crud/supero-apps/claim   ·   two roles, one record</text>
+<text x="26" y="150" fill="#C7D3EA" font-size="13.5" font-weight="400" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">  comparing claim CLM-204455 — visible to both accounts</text>
+<text x="26" y="171" fill="#7286AC" font-size="13.5" font-weight="400" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">    staff sees 24 fields, policyholder sees 22</text>
+<text x="26" y="192" fill="#4ADE80" font-size="13.5" font-weight="600" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">  PASS  'fraud_score' present for staff (19) and ABSENT for the policyholder</text>
+<text x="26" y="213" fill="#4ADE80" font-size="13.5" font-weight="600" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">  PASS  'internal_notes' present for staff (Weather event corroborated…) and ABSENT for the policyholder</text>
+<text x="26" y="234" fill="#4ADE80" font-size="13.5" font-weight="600" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">  PASS  every claim the policyholder can read is their own (9 rows)</text>
+<text x="26" y="276" fill="#F2F6FF" font-size="13.5" font-weight="400" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">Same rule, other spellings</text>
+<text x="26" y="297" fill="#4ADE80" font-size="13.5" font-weight="600" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">  PASS  POST /query {"type":"claim"}      -&gt; HTTP 200, 9 rows, no hidden field</text>
+<text x="26" y="318" fill="#4ADE80" font-size="13.5" font-weight="600" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">  PASS  POST /query {"obj_type":"claim"}  -&gt; HTTP 200, 9 rows, no hidden field</text>
+<text x="26" y="339" fill="#4ADE80" font-size="13.5" font-weight="600" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">  PASS  GET by uuid                       -&gt; no hidden field present</text>
+<text x="26" y="381" fill="#2DD4DE" font-size="13.5" font-weight="400" xml:space="preserve" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">Result: the policy in setup.py is what the API enforces.</text>
+</svg>

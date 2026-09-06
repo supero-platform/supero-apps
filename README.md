@@ -28,6 +28,19 @@ Sign in as the front-desk user, then sign out and back in as the patient. The pa
 record is missing `clinical_notes` — and nothing in `ui/app.js` is doing that. The rule is
 five lines in [`apps/healthcare/lumen/setup.py`](apps/healthcare/lumen/setup.py).
 
+**Or check it from a terminal in ten seconds**, no signup, no clone of your own domain:
+
+```bash
+git clone https://github.com/supero-platform/supero-apps
+cd supero-apps/verify && ./02-rbac-enforcement.sh
+```
+
+That script logs into the live insurance demo as a claims adjuster and as a
+policyholder, finds one claim both can see, and compares the two responses. The
+adjuster gets `fraud_score` and `internal_notes`; the policyholder gets the same
+record without them. [`verify/`](verify/) explains what it proves — and what it
+does not.
+
 ---
 
 ## Then run it yourself, in about two minutes

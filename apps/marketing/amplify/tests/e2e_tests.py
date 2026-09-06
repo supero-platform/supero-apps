@@ -330,28 +330,126 @@ def test_delete(S, ses, created):
         except Exception as e: S.fail("delete", f"VERIFY {d}", str(e))
 
 # === 5-14: Remaining sections ===
+# ---------------------------------------------------------------------------
+# RBAC-EXPECTATION-V1 — read the app's OWN policy instead of accepting any answer.
+#
+# test_rbac used to score both outcomes as a pass:
+#
+#     if   r.status_code == 200: S.ok(...)
+#     elif r.status_code == 403: S.ok(...)
+#
+# which is green whether the policy is enforced or the entity is wide open. It is
+# byte-identical across 16 apps, so 16 suites were reporting an RBAC result that no
+# server behaviour could ever fail. This loads POLICIES from the app's own setup.py
+# and asserts the status the policy actually calls for.
+# ---------------------------------------------------------------------------
+_POLICY_INDEX = None
+_POLICY_ERROR = None
+
+
+def _policy_index():
+    """{(role, entity): {'read': bool, 'create': bool}} from this app's setup.py."""
+    global _POLICY_INDEX, _POLICY_ERROR
+    if _POLICY_INDEX is not None or _POLICY_ERROR is not None:
+        return _POLICY_INDEX
+    try:
+        import setup as _app_setup
+        # NAME COLLISION, AND IT MATTERS. Most apps call the RBAC list POLICIES, but
+        # sentinel's POLICIES is seed data for insurance policies and its RBAC list is
+        # POLICIES_DEF. Importing the wrong one yields a list of tuples, every lookup
+        # misses, and every check silently SKIPS — the same vacuity this rewrite exists
+        # to remove, just quieter. So: find the list that actually holds PolicyDefs,
+        # and refuse to score anything if none is found.
+        candidates = [getattr(_app_setup, n, None)
+                      for n in ("POLICIES_DEF", "POLICIES", "ACCESS_POLICIES")]
+        policies = next(
+            (c for c in candidates
+             if isinstance(c, (list, tuple)) and c
+             and hasattr(c[0], "role") and hasattr(c[0], "rules")),
+            None)
+        if policies is None:
+            raise RuntimeError(
+                "no PolicyDef list found in setup.py (looked for POLICIES_DEF, "
+                "POLICIES, ACCESS_POLICIES)")
+        idx = {}
+        for pd in policies:
+            role = getattr(pd, "role", None)
+            default_full = str(getattr(pd, "default_access", "")).lower() == "full"
+            for rule in (getattr(pd, "rules", None) or []):
+                ent = getattr(rule, "entity", None)
+                if not role or not ent:
+                    continue
+                idx[(role, str(ent).lower())] = {
+                    "read": bool(getattr(rule, "can_read", False)) or default_full,
+                    "create": bool(getattr(rule, "can_create", False)) or default_full,
+                }
+            idx[(role, "__default_full__")] = {"read": default_full, "create": default_full}
+        _POLICY_INDEX = idx
+    except Exception as e:                                  # noqa: BLE001
+        _POLICY_ERROR = f"{type(e).__name__}: {e}"
+    return _POLICY_INDEX
+
+
+def _expect(role, entity, verb):
+    """True = should succeed, False = should be denied, None = cannot tell."""
+    idx = _policy_index()
+    if idx is None:
+        return None
+    # Admin tiers are unconditional allow on this platform.
+    if role in ("platform_admin", "domain_admin", "project_admin"):
+        return True
+    ent = str(entity).lower().split(":")[-1]
+    hit = idx.get((role, ent))
+    if hit is not None:
+        return hit[verb]
+    # No rule for this entity. default_access="full" allows; "none" denies READS only
+    # in enforcing mode, which is off by default — so this is genuinely undecidable
+    # and must not be scored either way.
+    dflt = idx.get((role, "__default_full__"))
+    return True if (dflt and dflt[verb]) else None
+
+
 def test_rbac(S, ases, uses):
     if not S.json_output: print("\n  [5] RBAC\n")
     if not uses: S.skip("rbac", "RBAC", "No users"); return
+    if _policy_index() is None:
+        S.fail("rbac", "RBAC", f"could not load POLICIES from setup.py ({_POLICY_ERROR}) "
+                              f"- refusing to score RBAC without the policy to check against")
+        return
     for ts in OBJECT_SCHEMAS[:3]:
         q, d = _qualify(_to_snake(ts["name"])), ts.get("display_name", ts["name"])
         for em, info in uses.items():
+            role = info["role"]
+            want = _expect(role, _to_snake(ts["name"]), "read")
             try:
                 r, ms = _timed(lambda: info["session"].get(_url(q), timeout=15))
-                if r.status_code == 200: S.ok("rbac", f"LIST {d} as {info['role']} ({em.split('@')[0]})", duration_ms=ms)
-                elif r.status_code == 403: S.ok("rbac", f"LIST denied {info['role']}", duration_ms=ms)
-                else: S.fail("rbac", f"LIST {d} {info['role']}", f"HTTP {r.status_code}")
+                if want is None:
+                    S.skip("rbac", f"LIST {d} as {role}",
+                           "no explicit rule and the default is not decidable - not scored")
+                elif want and r.status_code == 200:
+                    S.ok("rbac", f"LIST {d} as {role} ({em.split('@')[0]}) - allowed by policy", duration_ms=ms)
+                elif not want and r.status_code == 403:
+                    S.ok("rbac", f"LIST {d} as {role} - denied, as the policy says", duration_ms=ms)
+                else:
+                    S.fail("rbac", f"LIST {d} as {role}",
+                           f"policy says {'allow' if want else 'deny'} but server returned HTTP {r.status_code}")
             except Exception as e: S.fail("rbac", f"LIST {d}", str(e))
     for em, info in uses.items():
         if info["role"] != "tenant_user": continue
         ts = OBJECT_SCHEMAS[0]; q = _qualify(_to_snake(ts["name"])); p = make_payload(ts, f"rbac-{HEX}")
+        want = _expect("tenant_user", _to_snake(ts["name"]), "create")
         try:
             r, ms = _timed(lambda: info["session"].post(_url(q), json=p, timeout=15))
-            if r.status_code in (200, 201):
-                S.ok("rbac", f"CREATE tenant_user ({em.split('@')[0]})", duration_ms=ms)
+            if want is None:
+                S.skip("rbac", "CREATE tenant_user", "no explicit rule - not scored")
+            elif want and r.status_code in (200, 201):
+                S.ok("rbac", f"CREATE tenant_user ({em.split('@')[0]}) - allowed by policy", duration_ms=ms)
                 u = r.json().get("uuid", ""); u and info["session"].delete(_url(q, u), timeout=10)
-            elif r.status_code == 403: S.ok("rbac", f"CREATE denied tenant_user", duration_ms=ms)
-            else: S.fail("rbac", f"CREATE tenant_user", f"HTTP {r.status_code}")
+            elif not want and r.status_code == 403:
+                S.ok("rbac", "CREATE denied tenant_user - as the policy says", duration_ms=ms)
+            else:
+                S.fail("rbac", "CREATE tenant_user",
+                       f"policy says {'allow' if want else 'deny'} but server returned HTTP {r.status_code}")
         except Exception as e: S.fail("rbac", "CREATE tenant_user", str(e))
         break
 

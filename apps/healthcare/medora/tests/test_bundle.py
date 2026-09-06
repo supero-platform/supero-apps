@@ -1084,7 +1084,7 @@ def check_tab_schema_references(suite):
     #
     # Match the tabs[].schema values against multiple valid forms:
     #   - canonical snake:            "form_definition"
-    #   - namespace-qualified:        "mani1112:form_definition"
+    #   - namespace-qualified:        "your_namespace:form_definition"
     #   - original PascalCase:        "FormDefinition"
     #
     # A tab schema value is valid if it matches ANY of these forms for

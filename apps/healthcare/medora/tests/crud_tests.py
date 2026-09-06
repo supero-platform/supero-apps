@@ -998,7 +998,7 @@ def main():
     user_sessions = []
     for u in cfg.users:
         email    = u["email"]
-        # REPLACED-BY-3.5.0: no hardcoded password fallback (§1.7).
+        # REPLACED-BY-3.5.0: no hardcoded password fallback.
 
         password = u.get("password") or getattr(cfg, "default_user_password", "")
         role     = u.get("role", "tenant_user")

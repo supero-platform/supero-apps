@@ -1,7 +1,7 @@
-# config.py — PULSE app identity, tenants, users, services (SKILLS.md §10)
+# config.py — PULSE app identity, tenants, users, services
 #
 # MULTI-TENANT: each gym LOCATION is a Supero tenant. default-tenant is HQ/admin-only
-# (listed FIRST, §10); real member-facing data lives in the named location tenants.
+# (listed FIRST); real member-facing data lives in the named location tenants.
 # (Note: whether the runtime renders the TenantSwitcher / signup-tenant picker is a
 #  PROJECT-level flag on the platform — isMultiTenant in window.__SUPERO_CONFIG is
 #  fetched from the project record, not set here; see the GAPS note in the build
@@ -62,7 +62,7 @@ class AppConfig:
          "full_name": "Leo Vance", "tenant": "westside"},
     ])
 
-    # Only the integrations this app uses, with "workflows" LAST (§10):
+    # Only the integrations this app uses, with "workflows" LAST:
     services: list = field(default_factory=lambda: ["email", "sms", "ai", "appointment", "booking", "membership", "payment", "workflows"])
 
     public_schemas: list = field(default_factory=lambda: ["location", "trainer", "fitness_class"])

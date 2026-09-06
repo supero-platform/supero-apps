@@ -1,17 +1,17 @@
 # setup.py — policies, the appointment-confirmation workflow, and multi-tenant
-# seed data for MEDORA (SKILLS.md §6, §10, §13).
+# seed data for MEDORA.
 import sys, os, datetime
 sys.path.insert(0, os.path.dirname(__file__))
 from supero.app_setup import AppSetup, PolicyDef, PolicyRule, make_seed_record, ref_link
 from config import AppConfig
 from schemas import ALL_SCHEMAS, PUBLIC_SCHEMAS, SUPERO_APP_NAMESPACE
 
-# NOTE: SKILLS.md §10's skeleton shows `make_seed_record(ALL_SCHEMAS)`, but the
+# NOTE: the app conventions's skeleton shows `make_seed_record(ALL_SCHEMAS)`, but the
 # installed SDK's make_seed_record takes the NAMESPACE STRING (it does
 # `namespace.strip().lower()`), and passing the schema list raises
-# `AttributeError: 'list' object has no attribute 'strip'`. SKILLS.md's own
+# `AttributeError: 'list' object has no attribute 'strip'`. the generator's own
 # docstring example uses `make_seed_record(APP_NAMESPACE)`, which matches the
-# SDK — so we bind to the single app namespace. (Reported as a SKILLS.md gap.)
+# SDK — so we bind to the single app namespace.
 seed_record = make_seed_record(SUPERO_APP_NAMESPACE)   # MUST be module-level
 
 
@@ -24,8 +24,8 @@ def ux(pid, w=1600, h=1100):
 
 
 # ----------------------------------------------------------------------------
-# Access control (§6). tenant_user (patients) is fail-closed (default none).
-#   - Doctor / Department: SHARED read for any signed-in user (also public, §7.9).
+# Access control. tenant_user (patients) is fail-closed (default none).
+#   - Doctor / Department: SHARED read for any signed-in user (also public).
 #   - Patient / Appointment / Encounter / Prescription / LabResult / Invoice:
 #     PRIVATE, owner-scoped — each patient sees ONLY their own rows via
 #     owner_username == $user.name (the platform auto-stamps it on create and
@@ -76,7 +76,7 @@ POLICIES = [
 
 # ----------------------------------------------------------------------------
 # Workflow: when staff confirm an appointment, email + SMS the patient in
-# parallel, then stamp workflow_status="processed" + processed_at (§6). The
+# parallel, then stamp workflow_status="processed" + processed_at. The
 # crud_operation object_type is NAMESPACE-QUALIFIED ("medorahealth:appointment").
 # ----------------------------------------------------------------------------
 WORKFLOW_DEFINITIONS = [{

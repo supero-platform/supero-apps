@@ -53,18 +53,42 @@ plus validation, a typed SDK, and admin CRUD screens.
 | `type` | see types below |
 | `mandatory` | `True` → required on create |
 | `values` | list → constrains to an enum |
-| `unique` | `True` → enforced unique |
+
+> `unique` is documented elsewhere in the ecosystem but **no app in this repo uses it**
+> and we have not verified that it is enforced on the write path. It is left out here
+> rather than described as something it may not do. If you need uniqueness, enforce it
+> in your own code until you have tested otherwise.
 
 ## Types
 
-`string` · `text` · `integer` · `float` · `boolean` · `datetime` · `Image` · `File` ·
-`ref(<Schema>)` for a relation.
+`string` · `text` · `integer` · `float` · `boolean` · `date` · `datetime` · `json` ·
+`Image` · `File`
 
-## Hierarchy — `parent_type`
+That is the complete set, counted from all 19 apps in this repo:
 
-`"parent_type": "tenant"` roots an object at the tenant. Point it at another object to nest:
-an `Appointment` with `"parent_type": "Patient"` lives under a patient, which drives scoping
-and cascade. A query scoped to one patient can't leak another's rows.
+```
+string 657 · integer 85 · float 76 · text 62 · Image 42 · datetime 41
+date 40 · boolean 26 · json 9 · File 3
+```
+
+**There is no `ref(<Schema>)` type.** An earlier version of this page said there was.
+Relations are expressed one of two ways — see below.
+
+## Relations
+
+Two mechanisms, and the one you want is usually the first.
+
+**Nesting, via `parent_type`.** `"parent_type": "tenant"` roots an object at the tenant —
+that is what 106 of the schemas in this repo do. Point it at another object type to nest
+instead: an `Appointment` with `"parent_type": "patient"` lives under a patient, which
+drives scoping and cascade. A query scoped to one patient cannot leak another's rows.
+This is the mechanism that carries access-control weight, so prefer it when the child
+genuinely belongs to the parent.
+
+**A plain reference attribute.** For a link that is not ownership, store the target's
+uuid in an ordinary `string` attribute and name it for what it points at —
+`user_account_uuid`, `appointment_uuid`, `service_uuid`. That is what the apps here do;
+there is no special reference type to declare.
 
 ## Inheritance
 

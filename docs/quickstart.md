@@ -80,7 +80,7 @@ Open `schemas.py` — around 100 lines. Find the `Patient` object and add an att
 {
     "schema_type": "object", "name": "Patient", "namespace": "lumen", "parent_type": "tenant",
     "attributes": [
-        {"name": "email",     "type": "string", "mandatory": True, "unique": True},
+        {"name": "email",     "type": "string", "mandatory": True},
         {"name": "allergies", "type": "string"},        # ← new
     ],
 }

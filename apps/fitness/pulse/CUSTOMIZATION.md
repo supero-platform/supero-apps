@@ -76,8 +76,8 @@ When you make schema changes or want to refresh AI-generated code:
 2. Download the new tarball (name format: `<project>-<domain>.tar.gz`)
 3. Extract over your existing directory:
    ```bash
-   tar -xzf pet-grooming-salon-management.tar.gz \
-       -C ~/mani/ --overwrite
+   tar -xzf your-app.tar.gz \
+       -C ~/apps/ --overwrite
    ```
 4. Re-run setup:
    ```bash
@@ -164,7 +164,7 @@ For Docker, update `.env` then `docker compose restart`.
 ### Direct Python
 ```bash
 # Remove everything including venv
-rm -rf ~/mani/pet-grooming-salon-management
+rm -rf ~/apps/your-app
 
 # Optionally, also remove the Supero project from the admin panel
 ```
@@ -179,287 +179,60 @@ docker rmi yourregistry/pawspa:v1.0.0
 
 ## Quick reference
 
-| What you want to change | Edit this file | Section below |
-|---|---|---|
-| Hero image, title, CTAs | `ui/app.js` → `heroConfig` | [Hero section](#hero-section) |
-| Footer text, contact, links | `ui/app.js` → `footerConfig` | [Footer](#footer) |
-| Brand colors, theme | `ui/app.js` → `theme` or `themeOverrides` | [Theme & colors](#theme--colors) |
-| Layout (sidebar, topnav, minimal) | `ui/app.js` → `layoutMode` | [Layout mode](#layout-mode) |
-| Dashboard widgets and charts | `ui/app.js` → `dashboardWidgets`, `dashboardCharts` | [Dashboard](#dashboard) |
-| Tabs, fields, table columns | `ui/app.js` → `TABS` | [Tabs & schemas](#tabs--schemas) |
-| Card appearance | `ui/app.js` → `cardTemplate` on each tab | [Card templates](#card-templates) |
-| Custom action buttons | `ui/app.js` → `actionButtons` | [Action buttons](#action-buttons) |
-| Public-facing pages (SEO) | `ui/app.js` → `publicSchemas` + `introSection` | [Public pages](#public-pages) |
-| Multi-tenant "Salon" / "Firm" wording | `.env` → `SUPERO_TENANT_NOUN_SINGULAR` | [Tenant terminology](#tenant-terminology) |
-| Admin email, backend URL | `.env` | [Environment](#environment-variables) |
-| Schema definitions, seed data | `schemas.py`, `setup.py` | [Backend customization](#backend-customization) |
-| User roles, RBAC policies | `setup.py` or admin panel | [Access control](#access-control) |
-| Workflow behavior | Admin panel → Workflows | [Admin panel](#admin-panel) |
+| What you want to change | Edit this file |
+|---|---|
+| Any screen, layout, colour or copy | `ui/app.js` — it is plain React, and it is yours |
+| Your data model | `schemas.py` |
+| Seed data, roles, access policies, workflows | `setup.py` |
+| App name, services, tenants | `config.py` |
+| Domain, project, port, credentials | `.env` |
+| Users, API keys, connectors, monitoring | Admin panel |
 
 ---
 
-## Hero section
+## Customising the UI
 
-Controls the top banner on the public landing page.
+`ui/app.js` is the app. It mounts its own React tree and you edit it directly — there
+is no configuration layer between you and the screens, and no options object to learn.
 
-```javascript
-AppShell.render({
-    // ...other options
-    heroConfig: {
-        title: 'Built for the Jobsite. Trusted by Contractors.',
-        subtitle: '25-word compelling sentence about what the user can do.',
-        description: 'Optional 2-3 sentence elaboration for longer hero variants.',
-        cta: 'Get Started →',
-        image: 'https://images.pexels.com/photos/12345/photo.jpg',
-        gradient: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-    },
-});
-```
+Open it and change what you want. React and Tailwind load from a CDN, so there is no
+build step: save the file and refresh the page.
 
-**Fields:**
+Two rules, both enforced by the runtime rather than by convention:
 
-- `title` — main headline, 8-12 words, punchy
-- `subtitle` — tagline, 15-25 words
-- `description` — elaboration, 2-3 sentences (shown on marketplace/content landing variants)
-- `cta` — button label
-- `image` — background image URL (Pexels/Unsplash, HTTPS only). Omit for gradient-only hero
-- `gradient` — CSS gradient as fallback when no image is set, or as overlay
+- **Never edit `ui/supero-ui.js`, `ui/index.html`, `ui/config.js` or `ui/server.py`.**
+  They are regenerated on every `./run.sh` and your changes will be overwritten.
+  `ui/app.js` is the file that survives.
+- **Do not redeclare the globals `supero-ui.js` provides** — `useState`, `client`,
+  `services`, `showToast`, `CrudModal`, `StatCard` and the rest. Redeclaring one is a
+  fatal `SyntaxError` at load. `CLAUDE.md` in this directory lists them all.
 
-**Tip for hero images**: use Pexels (free, commercial OK). Example search: [pexels.com/search/pet-grooming](https://pexels.com/search/pet-grooming) → click photo → copy `.jpg` URL.
+The components `supero-ui.js` exports (`DataTab`, `Dashboard`, `CrudModal`,
+`SvgBarChart`, `AIChatPanel`, …) are available as globals and you can use them
+directly, ignore them, or replace them. `CLAUDE.md` documents the full surface,
+including the `client` API and the `services` catalogue.
 
 ---
-
-## Footer
-
-```javascript
-footerConfig: {
-    poweredBy: true,                       // show "Powered by Supero"
-    contactEmail: 'hello@example.com',
-    links: [
-        { label: 'Privacy', url: '/privacy' },
-        { label: 'Terms', url: '/terms' },
-        { label: 'Contact', url: 'mailto:hello@example.com' },
-    ],
-}
-```
-
----
-
-## Theme & colors
-
-Pick a preset:
-
-```javascript
-theme: 'fintech',   // other options: pet-care, health, education, saas, retail, food, legal, fitness
-```
-
-Or override specific colors:
-
-```javascript
-themeOverrides: {
-    primary: '#dc2626',      // main brand color
-    secondary: '#10b981',
-    background: '#fafbfc',
-}
-```
-
-All theme tokens map to CSS variables like `--supero-600`, `--supero-800`. You can also set these directly in `ui/index.html` `<style>` for project-wide override.
-
----
-
-## Layout mode
-
-Changes the overall app shell structure.
-
-```javascript
-layoutMode: 'sidebar',     // default: left nav + main content
-// layoutMode: 'topnav',    // horizontal top bar, more minimal
-// layoutMode: 'minimal',   // no chrome, content-first
-```
-
-Additional fine-tuning:
-
-```javascript
-appLayout: {
-    dashboardStyle: 'mixed',       // 'grid' | 'mixed' | 'feed'
-    listStyle: 'grid',              // 'grid' | 'table' | 'list'
-    defaultTab: 'appointments',     // tab to open on login
-}
-```
-
----
-
-## Dashboard
-
-### Widgets (top-row metric cards)
-
-```javascript
-dashboardWidgets: [
-    {
-        label: 'Total Revenue',
-        schema: 'appointment',
-        field: 'total_price',
-        aggregate: 'sum',               // sum | count | avg | max | min
-        filter: { status: 'completed' },
-        icon: '💰',
-        format: 'currency',             // currency | number | percent | date
-    },
-    { label: 'Active Pets', schema: 'pet', aggregate: 'count', icon: '🐕' },
-],
-```
-
-### Charts
-
-```javascript
-dashboardCharts: [
-    {
-        type: 'pie',                    // pie | bar | line
-        title: 'Appointments by Status',
-        schema: 'appointment',
-        groupBy: 'status',
-        aggregate: 'count',
-    },
-    {
-        type: 'bar',
-        title: 'Revenue by Category',
-        schema: 'service',
-        groupBy: 'category',
-        valueField: 'base_price',
-        aggregate: 'avg',
-        format: 'currency',
-    },
-],
-```
-
-Keep to **2 charts max** — more makes the dashboard cluttered.
-
----
-
-## Tabs & schemas
-
-Each tab in the app is defined in the `TABS` array:
-
-```javascript
-const TABS = [
-    {
-        id: 'pets',
-        label: 'Pets',
-        icon: '🐕',
-        schema: 'pet',                  // matches schemas.py entry
-        attrs: [
-            { name: 'pet_name', type: 'string', mandatory: true, featured: true },
-            { name: 'breed', type: 'string', mandatory: true, featured: true },
-            { name: 'size', type: 'string', values: ['small', 'medium', 'large'] },
-            { name: 'profile_photo', type: 'Image' },
-        ],
-        cardTemplate: { /* see below */ },
-    },
-];
-```
-
-**Attribute flags:**
-
-- `mandatory: true` — field required on create
-- `featured: true` — show on card + list prominently
-- `values: [...]` — enum / dropdown values
-- `type: 'Image'` — image upload
-- `type: 'Image', list: true` — gallery (multiple images)
-- `list: true` on strings — multi-value chip input
-- `hidden: true` — store but don't display
-
-Changing `attrs` affects the **UI only**. To change backend fields, edit `schemas.py` and restart.
-
----
-
-## Card templates
-
-Controls how each record renders as a card in grid views.
-
-```javascript
-cardTemplate: {
-    image: 'profile_photo',         // field with type 'Image' for thumbnail
-    title: 'pet_name',              // most prominent field (required)
-    subtitle: 'breed',
-    badge: 'size',                  // small tag, usually an enum
-    ribbon: 'owner_name',           // corner label
-    price: 'base_price',            // for currency fields
-    priceSuffix: '/visit',          // e.g. "/month", "/night", ""
-    metrics: ['age', 'weight', 'last_visit'],  // additional fields shown compactly
-}
-```
-
----
-
-## Action buttons
-
-Add custom buttons on record pages that trigger workflows or external URLs.
-
-```javascript
-actionButtons: {
-    'appointment': [
-        {
-            label: 'Send Reminder',
-            icon: '📧',
-            workflow: 'send_appointment_reminder',  // workflow ID from setup.py
-            confirmMessage: 'Send SMS reminder to customer?',
-        },
-        {
-            label: 'View Invoice',
-            icon: '🧾',
-            url: '/invoice/{uuid}',                 // {uuid} replaced with record UUID
-            target: '_blank',
-        },
-    ],
-}
-```
-
-**Workflow buttons** call the backend workflow with the record's fields as input. Workflows are defined in `setup.py` and can be enabled/configured via the admin panel.
-
----
-
-## Public pages
-
-Schemas listed in `publicSchemas` are browsable on the landing page without login (great for SEO, marketplaces, portfolios).
-
-```javascript
-publicSchemas: ['service', 'portfolio_item'],
-
-// Optional: richer landing content
-introSection: {
-    title: 'Why PawSpa',
-    description: 'What makes our grooming service different.',
-    features: [
-        { icon: '✂️', label: 'Expert Groomers', description: '10+ years avg. experience' },
-        { icon: '🐕', label: 'All Breeds Welcome', description: 'Small to extra-large' },
-        { icon: '📸', label: 'Portfolio', description: 'See our work before booking' },
-    ],
-},
-```
-
-Public fetch endpoint: `GET /api/public/{schema}` — no auth, returns records from the default tenant.
-
----
-
 ## Tenant terminology
 
-For multi-tenant apps, the UI says "Create your Workspace" by default. Override per domain:
+For multi-tenant apps, the UI says "Create your Workspace" by default. Override it in
+`.env`:
 
 ```bash
-# In .env
-SUPERO_TENANT_NOUN_SINGULAR=Salon
-SUPERO_TENANT_NOUN_PLURAL=Salons
+SUPERO_IS_MULTI_TENANT=true
+SUPERO_TENANT_NOUN_SINGULAR=Insurer
+SUPERO_TENANT_NOUN_PLURAL=Insurers
 ```
 
-Or directly in app.js (takes precedence):
+These are read at config-generation time and written into `ui/config.js`, which
+`ui/app.js` reads as `window.__SUPERO_CONFIG`. They are **not** fields on the project
+record — setting them through the API succeeds and is silently discarded, so `.env` is
+the only place that works.
 
-```javascript
-tenantNoun: { singular: 'Salon', plural: 'Salons' },
-```
-
-Common choices: `Salon`, `Studio`, `Firm`, `Practice`, `Clinic`, `Restaurant`, `Store`, `School`, `Agency`, `Organization`, `Workspace`.
+Common choices: `Insurer`, `Studio`, `Firm`, `Practice`, `Clinic`, `Restaurant`,
+`Store`, `School`, `Agency`, `Organization`, `Workspace`.
 
 ---
-
 ## Environment variables
 
 All in `.env`:
@@ -504,8 +277,8 @@ Platform handles migrations automatically for field additions. Field removal req
 ### `setup.py` — seed data and policies
 
 - `seed_test_data()` — records inserted on first setup. Every record must have `name`, `display_name`, and `description`.
-- `ACCESS_POLICIES` — role-based permissions (see [Access control](#access-control))
-- `WORKFLOWS` — named workflows users can trigger (email, SMS, webhook, etc.)
+- `POLICIES` — role-based permissions (see [Access control](#access-control))
+- `WORKFLOW_DEFINITIONS` — named workflows users can trigger, and `EVENT_BINDINGS` to fire them on data events (email, SMS, webhook, etc.)
 
 ---
 
@@ -516,7 +289,7 @@ Every multi-tenant app ships with 3 default roles:
 | Role | Access |
 |---|---|
 | `tenant_admin` | Full CRUD within their tenant; can invite users |
-| `tenant_user` | CRUD per-schema per `ACCESS_POLICIES` in setup.py |
+| `tenant_user` | CRUD per-schema per `POLICIES` in setup.py |
 | `viewer` | Read-only, often with row-level filter (e.g. only own bookings) |
 
 Edit `setup.py` to add custom roles. For row-level security, use `filter_field` + `filter_match`:

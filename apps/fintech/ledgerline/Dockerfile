@@ -26,6 +26,12 @@ COPY --chown=supero:supero . /app
 # Ensure run.sh is executable
 RUN chmod +x /app/run.sh 2>/dev/null || true
 
+# WORKDIR created /app as root, and `COPY --chown` only chowns the entries it
+# copies — not the directory itself. run.sh then creates .venv inside /app as
+# uid 1000 and got `Permission denied: '/app/.venv'`, so `docker compose up`
+# failed on every app. Chown the directory before dropping privileges.
+RUN chown supero:supero /app
+
 USER supero
 
 ENV PORT=5664

@@ -62,5 +62,6 @@ claims — treat these apps as demonstrations until you have the agreements you 
 ## Your data / exit
 
 Every record is reachable through the same authenticated REST API the app uses
-(`GET /crud/<type>`), so you can export everything with your project API key at any time.
+(`GET /api/v1/crud/<domain>/<type>`), so you can export everything with your project API
+key at any time.
 Nothing is locked in a store you can't read.

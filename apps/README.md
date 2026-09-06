@@ -1,6 +1,6 @@
 # Apps by industry
 
-15 applications. Each is live at `<name>.supero.live`, each is complete, each is yours to clone.
+19 applications. Each is live at `<name>.supero.live`, each is complete, each is yours to clone.
 
 Every app follows the same shape — so once you've read one, you've read all of them:
 
@@ -57,6 +57,22 @@ Every app follows the same shape — so once you've read one, you've read all of
 | [haven](real-estate/haven) | Real estate | Offers with broker approval |
 | [backlot](media/backlot) | Film | Call sheets, AI script breakdown |
 
+## Multi-tenant — several organisations on one deployment
+
+These four run more than one organisation from a single deployment, so you can sign in as
+two different orgs and watch the data separate.
+
+| App | Industry | Orgs | What makes it interesting |
+|---|---|---|---|
+| [medora](healthcare/medora) | Hospital network | 3 hospitals | Appointments, encounters, prescriptions, labs, invoicing |
+| [helix](life-sciences/helix) | Clinical trials | 3 sites | HQ plus three sites; the treatment `arm` is withheld from blinded investigators |
+| [lattice](real-estate/lattice) | Property management | 3 managers | Units, leases, rent, maintenance, applications |
+| [pulse](fitness/pulse) | Gym chain | 3 locations | Classes, bookings, memberships, check-ins |
+
+> These four are newer than the other 15. `helix`, `lattice` and `pulse` do not ship a
+> `tests/` directory yet — see [CONTRIBUTING.md](../CONTRIBUTING.md) if you would like to
+> add one.
+
 ---
 
 ## Which should I start with?
@@ -73,14 +89,16 @@ Each app uses a different port, so you can run several side by side.
 
 | Port | App | | Port | App |
 |---|---|---|---|---|
-| 5651 | fieldops | | 5669 | summit |
-| 5661 | atelier | | 5670 | pulsefit |
-| 5662 | concierge | | 5671 | backlot |
-| 5663 | lumen | | 5672 | amplify |
-| 5664 | ledgerline | | 5673 | tavola |
-| 5666 | relay | | 5674 | sentinel |
-| 5667 | brightsmile | | 5675 | haven |
-| 5668 | trialcore | | | |
+| 5651 | fieldops | | 5671 | backlot |
+| 5661 | atelier | | 5672 | amplify |
+| 5662 | concierge | | 5673 | tavola |
+| 5663 | lumen | | 5674 | sentinel |
+| 5664 | ledgerline | | 5675 | haven |
+| 5666 | relay | | 5707 | helix |
+| 5667 | brightsmile | | 5711 | pulse |
+| 5668 | trialcore | | 5712 | medora |
+| 5669 | summit | | 5713 | lattice |
+| 5670 | pulsefit | | | |
 
 ## Not here
 

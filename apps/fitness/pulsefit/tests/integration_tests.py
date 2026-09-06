@@ -206,7 +206,21 @@ def _get_services_from_config(config_mod) -> list:
         app_cfg = getattr(config_mod, "config", None)
     if app_cfg is None:
         return []
-    # AppConfig may be a class or an instance
+    # AppConfig may be a class or an instance. INSTANTIATE IT IF IT IS A CLASS.
+    #
+    # This is why every app reported an unrendered "not in config.py services" for a
+    # service it plainly declares. Every app writes:
+    #     services: list = field(default_factory=lambda: [...])
+    # and @dataclass REMOVES the class attribute for a default_factory field, so
+    # getattr(AppConfig, "services") is None on the class and only exists on an
+    # instance. The docstring above always said "instance"; the code never made one.
+    # The upstream checks then SKIPPED on an empty list and the downstream check
+    # hard-FAILED — skip upstream, fail downstream, in all 19 apps.
+    if isinstance(app_cfg, type):
+        try:
+            app_cfg = app_cfg()
+        except Exception:
+            pass
     services = getattr(app_cfg, "services", None)
     if callable(services):  # method
         try:
@@ -361,7 +375,7 @@ def check_workflow_step_services_in_config(services, defs, results):
             results.fail(
                 section, f"step_uses_undeclared_service",
                 f"workflow step '{step_id}' calls service '{svc}.{op}' but "
-                "'{svc}' is not in config.py services",
+                f"'{svc}' is not in config.py services",
                 mode="I-A", hint=hint,
             )
     else:

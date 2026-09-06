@@ -416,10 +416,10 @@ Update `ui/config.js` with your production API URL before deploying.
 ## Learn More
 
 - **Supero docs** — https://docs.supero.dev
-- **Schema reference** — https://docs.supero.dev/schemas
-- **Services catalog** — https://docs.supero.dev/services
-- **Workflow engine** — https://docs.supero.dev/workflows
-- **Community** — https://discord.gg/supero
+- **Schema design** — https://docs.supero.dev/building-your-app/schema-design
+- **Transactional services** — https://docs.supero.dev/building-your-app/transactional-services
+- **Workflows and automation** — https://docs.supero.dev/building-your-app/workflows-and-automation
+- **Community** — [GitHub Discussions](https://github.com/supero-platform/supero-apps/discussions)
 
 ---
 

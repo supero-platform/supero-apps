@@ -134,8 +134,6 @@ can run several at once.
 **Want to start over** — `./run.sh --reset` re-runs bootstrap. To wipe the domain
 entirely, delete it from the admin panel.
 
-**`from supero import *` fails** — known SDK bug. Use `from supero import Supero`.
-
 ---
 
 ## Next

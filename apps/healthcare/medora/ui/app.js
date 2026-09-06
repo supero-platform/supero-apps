@@ -1,7 +1,7 @@
-// ui/app.js — MEDORA: full custom React "Path B" front end (SKILLS.md §8).
+// ui/app.js — MEDORA: full custom React "Path B" front end.
 // A multi-tenant hospital/clinic network with a patient <-> doctor portal.
 //
-// Boundary discipline (SKILLS.md §0/§4): React, ReactDOM, React.useState/etc.,
+// Boundary discipline: React, ReactDOM, React.useState/etc.,
 // `client`, `services`, `showToast`, `formatCurrency`, `formatDate`,
 // `resolveImageUrl`, `getStatusColor` are RUNTIME GLOBALS — referenced, never
 // re-declared. We never call AppShell.render, never own #root, route in state.
@@ -49,7 +49,7 @@
   }
   function myImg(any) { try { return resolveImageUrl(any); } catch (e) { return ''; } }
 
-  // Capability gate — never test only a literal role string (SKILLS.md §7.5).
+  // Capability gate — never test only a literal role string.
   function isStaff() {
     try {
       if (client.isAdmin && client.isAdmin()) return true;
@@ -87,7 +87,7 @@
   }
 
   // ---- public reads (logged-out): client.getObjects auto-routes public ------
-  // schemas; we also keep a relative /api/public fallback (SKILLS.md §7.9).
+  // schemas; we also keep a relative /api/public fallback.
   function listPublic(schema) {
     return client.getObjects(schema).then(function (rows) {
       return Array.isArray(rows) ? rows : ((rows && rows.results) || []);
@@ -134,7 +134,7 @@
               onClick: function () { props.onAuth('login'); },
               className: 'px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700',
             }, 'Sign in')))),
-      // hero — single style branch (no backgroundImage + conditional background, §7.10)
+      // hero — single style branch (no backgroundImage + conditional background)
       h('section', {
         style: {
           backgroundImage: 'linear-gradient(rgba(15,23,42,0.62), rgba(15,23,42,0.62)), ' +
@@ -229,7 +229,7 @@
           .then(function () { showToast('Welcome to Medora!', 'success'); finish(); })
           .catch(fail);
       } else {
-        // 5-arg login — always all five (SKILLS.md rule 7).
+        // 5-arg login — always all five.
         client.login(cfg.domain, email, pw, cfg.project, cfg.tenant || 'default-tenant')
           .then(function () { finish(); })
           .catch(fail);
@@ -302,7 +302,7 @@
   }
 
   // Custom TenantSwitcher (chain super-admin only). Reads tenants from the
-  // platform `tenant` schema and drives client.setTenantOverride (SKILLS.md §9).
+  // platform `tenant` schema and drives client.setTenantOverride.
   function SiteSwitcher(props) {
     var st = React.useState([]), tenants = st[0], setTenants = st[1];
     var sc = React.useState(client._tenantOverride || ''), cur = sc[0], setCur = sc[1];
@@ -394,7 +394,7 @@
         patient_name: me.full_name || me.email, patient_email: me.email || '',
         doctor_name: docName, department_name: doc.specialty || '',
         reason: reason, visit_type: vtype, scheduled_at: iso,
-        // base_appointment mandatory fields — set the INITIAL state (§13):
+        // base_appointment mandatory fields — set the INITIAL state:
         status: 'requested', start_time: iso, end_time: endIso,
       };
       var refs = [];
@@ -690,7 +690,7 @@
     function confirm(a) {
       // Drive the transactional appointment service to confirmed, then run the
       // notification workflow (email + SMS + stamp). Discover ops at runtime:
-      // appointment.schedule(uuid) is the documented "confirm" verb (§13).
+      // appointment.schedule(uuid) is the documented "confirm" verb.
       var doConfirm;
       try {
         client.registerTransactionalExtensions({ appointment: 'appointment' });
@@ -846,7 +846,7 @@
       return h(PublicSite, { onAuth: function (m) { setAuthMode(m); } });
     }
     var logout = function () { setAuthed(false); setAuthMode(null); };
-    // Route by ROLE/capability (SKILLS.md §8.2a) — staff vs patient.
+    // Route by ROLE/capability — staff vs patient.
     return isStaff() ? h(AdminConsole, { onLogout: logout }) : h(PatientPortal, { onLogout: logout });
   }
 

@@ -1,20 +1,20 @@
 # schemas.py — LATTICE multi-tenant property-management data model
 # NAMESPACE-LITERAL-ONLY-V1: namespace is a plain string literal ("latticepm") on
-# every schema dict — no variable, no env read (SKILLS.md §5).
+# every schema dict — no variable, no env read.
 #
 # Domain (AppFolio/Buildium-style): each property-management COMPANY is a Supero
 # tenant. Within a tenant live the company's Properties, Units, Leases, Residents,
 # Owners, MaintenanceRequests, RentPayments and Applications.
 #
-# Deliberate, in-contract choices (all stay inside SKILLS.md §5/§13):
+# Deliberate, in-contract choices (all stay inside the app conventions/):
 #  - Unit is a CHILD of Property (parent_type "property") so units live inside a
-#    property's detail (SKILLS.md §5 "parent_type rule"). Child create passes
+#    property's detail. Child create passes
 #    parent_type + parent_uuid; child seed carries parent_uuid (gotcha #8).
 #  - RentPayment EXTENDS the `payment` transactional service → inherits the
 #    pending→authorized→captured→refunded state machine + MANDATORY status/amount/
-#    currency (§5 extends + §13). We add display/denormalized fields on top.
+#    currency. We add display/denormalized fields on top.
 #  - MaintenanceRequest is a plain workflow-bearing entity (submitted→assigned→
-#    in_progress→resolved) with workflow_status/processed_at chips (§5 + §6); the
+#    in_progress→resolved) with workflow_status/processed_at chips; the
 #    transactional `ticket` service exists but its op/state names (open/in_progress/
 #    resolved) don't map cleanly to our submitted/assigned wording, so we keep a
 #    plain status field driven by a real server-side workflow.
@@ -23,7 +23,7 @@
 #    semantics are short-term equipment rental, not a 12-month residential lease —
 #    so a plain entity is the spec-correct model here).
 #  - Resident / Owner are NORMAL entities (never named "user"/"tenant" — both are
-#    reserved/overloaded per §5). Resident links to login identity via the
+#    reserved/overloaded per). Resident links to login identity via the
 #    sanctioned flat field user_account_uuid, and is owner-scoped (owner_username).
 #  - Denormalized display fields (property_name, unit_label, resident_name, …) let
 #    lists / boards / dashboards render with zero ref-joins; real references are
@@ -103,7 +103,7 @@ Resident = {
     "description": "A renter living in a unit, linked to their login identity and scoped to themselves.",
     "attributes": [
         {"name": "owner_username", "type": "string"},        # auto-stamped; scopes "my" reads
-        {"name": "user_account_uuid", "type": "string"},     # sanctioned flat link to identity (§5)
+        {"name": "user_account_uuid", "type": "string"},     # sanctioned flat link to identity
         {"name": "full_name", "type": "string"},
         {"name": "email", "type": "string"},
         {"name": "phone", "type": "string"},
@@ -221,7 +221,7 @@ Application = {
     ],
 }
 
-# belt-and-suspenders: lets any (even pinned/old) SDK resolve the namespace (§5).
+# belt-and-suspenders: lets any (even pinned/old) SDK resolve the namespace.
 SUPERO_APP_NAMESPACE = "latticepm"
 
 ALL_SCHEMAS = [

@@ -1,16 +1,16 @@
 # schemas.py — MEDORA: a multi-tenant chain of hospitals/clinics with a
 # patient <-> doctor portal. Each hospital/clinic is a Supero TENANT.
 # NAMESPACE-LITERAL-ONLY-V1: namespace is a plain string literal ("medorahealth")
-# on every schema dict — no variable, no env read (SKILLS.md §5).
+# on every schema dict — no variable, no env read.
 #
-# Deliberate, in-contract choices (SKILLS.md is the contract):
+# Deliberate, in-contract choices:
 #  - Doctor / Department are PUBLIC (logged-out "find care"); everything clinical
 #    (Patient, Appointment, Encounter, Prescription, LabResult, Invoice) is NOT
-#    public — sensitive health data is gated behind auth + owner-scoped RBAC (§6).
+#    public — sensitive health data is gated behind auth + owner-scoped RBAC.
 #  - Patient is a NORMAL entity carrying a flat `user_account_uuid` link to the
-#    login identity (NEVER named "user"/"tenant" — reserved, §5). Owner-scoped so
+#    login identity (NEVER named "user"/"tenant" — reserved). Owner-scoped so
 #    a patient sees only THEIR profile.
-#  - Appointment EXTENDS the transactional `appointment` service base (§5 + §13):
+#  - Appointment EXTENDS the transactional `appointment` service base:
 #    it inherits status + start_time + end_time (mandatory) and the lifecycle
 #    requested -> confirmed -> completed / cancelled / no_show. It also denormalizes
 #    doctor_name / department_name / patient_name so lists, the day-board kanban,
@@ -63,7 +63,7 @@ Doctor = {
 }
 
 # ---------------------------------------------------------------------------
-# Patient — app-specific person linked to identity via user_account_uuid (§5).
+# Patient — app-specific person linked to identity via user_account_uuid.
 # Owner-scoped: each patient sees only their own profile.
 # ---------------------------------------------------------------------------
 Patient = {
@@ -74,7 +74,7 @@ Patient = {
     "description": "A patient profile linked to a login identity, owner-scoped for privacy.",
     "attributes": [
         {"name": "owner_username", "type": "string"},        # auto-stamped to creator
-        {"name": "user_account_uuid", "type": "string"},     # sanctioned flat link to identity (§5)
+        {"name": "user_account_uuid", "type": "string"},     # sanctioned flat link to identity
         {"name": "full_name", "type": "string"},
         {"name": "email", "type": "string"},
         {"name": "phone", "type": "string"},
@@ -91,7 +91,7 @@ Patient = {
 # ---------------------------------------------------------------------------
 # Appointment — EXTENDS the transactional `appointment` service.
 # Lifecycle: requested -> confirmed -> completed / cancelled / no_show.
-# Inherits MANDATORY status + start_time + end_time (§5 "extends", §13).
+# Inherits MANDATORY status + start_time + end_time.
 # ---------------------------------------------------------------------------
 Appointment = {
     "schema_type": "object",
@@ -112,7 +112,7 @@ Appointment = {
         {"name": "visit_type", "type": "string",
          "values": ["in_person", "telehealth"]},
         {"name": "scheduled_at", "type": "datetime"},        # friendly display copy of start_time
-        # workflow chip fields (stamped by appointment_confirmed, §6):
+        # workflow chip fields (stamped by appointment_confirmed):
         {"name": "workflow_status", "type": "string"},
         {"name": "processed_at", "type": "datetime"},
     ],
@@ -211,7 +211,7 @@ LabResult = {
 
 # ---------------------------------------------------------------------------
 # Invoice — EXTENDS the transactional `payment` service.
-# Inherits MANDATORY status + amount + currency (§5 "extends", §13).
+# Inherits MANDATORY status + amount + currency.
 # Owner-scoped to the patient; staff manage billing.
 # ---------------------------------------------------------------------------
 Invoice = {
@@ -235,7 +235,7 @@ Invoice = {
 }
 
 # belt-and-suspenders fallback so any (even old/pinned) SDK resolves the app
-# namespace; the real source of truth is each dict's literal "namespace" (§5).
+# namespace; the real source of truth is each dict's literal "namespace".
 SUPERO_APP_NAMESPACE = "medorahealth"
 
 ALL_SCHEMAS = [

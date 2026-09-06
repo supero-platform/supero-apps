@@ -1,4 +1,4 @@
-# config.py — MEDORA app identity, tenants, users, services (SKILLS.md §10).
+# config.py — MEDORA app identity, tenants, users, services.
 #
 # MULTI-TENANT is the headline: each hospital/clinic is a Supero TENANT.
 #   - `default-tenant` is listed first and is ADMIN-ONLY (no clinical data lives
@@ -14,7 +14,7 @@
 # dataclass — the CLI writes them into the generated ui/config.js from the
 # SUPERO_IS_MULTI_TENANT / SUPERO_TENANT_NOUN_* environment variables (see
 # .env.example). That is the only place to declare multi-tenancy for a
-# hand-authored bundle. (Reported as a SKILLS.md §10 gap.)
+# hand-authored bundle.
 import os
 from dataclasses import dataclass, field
 
@@ -74,7 +74,7 @@ class AppConfig:
          "full_name": "Sofia Nguyen", "tenant": "summit-childrens"},
     ])
 
-    # Only the integrations this app uses, with "workflows" LAST (§10):
+    # Only the integrations this app uses, with "workflows" LAST:
     services: list = field(default_factory=lambda: ["email", "sms", "appointment", "payment", "workflows"])
 
     public_schemas: list = field(default_factory=lambda: ["department", "doctor"])

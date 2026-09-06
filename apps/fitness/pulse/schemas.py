@@ -9,14 +9,14 @@
 #   - Every record below is parent_type:"tenant", so it is naturally tenant-scoped:
 #     the platform stamps the active tenant on create and filters reads by it.
 #
-# Deliberate, spec-grounded choices (SKILLS.md is the contract):
+# Deliberate, spec-grounded choices:
 #   - FitnessClass is the CATALOG/template (a class TYPE: yoga/HIIT/spin/strength).
 #   - ClassSession EXTENDS booking:base_booking — a scheduled instance with the
 #     mandatory start_time/end_time + a lifecycle (requested->confirmed->...).
 #   - Booking EXTENDS appointment:base_appointment — a member reserving a seat in a
 #     session; it too carries start_time/end_time + a lifecycle.
 #   - Membership EXTENDS membership:base_membership; Payment EXTENDS payment:base_payment.
-#   - Member is a NORMAL entity (never named "user"/"tenant"; §5 reserved names),
+#   - Member is a NORMAL entity (never named "user"/"tenant" reserved names),
 #     linked to identity via the sanctioned flat user_account_uuid field.
 #   - amenities / tags / gallery are typed `json` (a documented scalar) holding
 #     arrays — the spec has Image/File but no list-of-Image type, so json is the
@@ -209,7 +209,7 @@ Payment = {
 # ---------------------------------------------------------------------------
 
 # Customer profile — a NORMAL entity linked to identity via user_account_uuid
-# (NEVER named "user"/"tenant"; §5 reserved names). Owner-scoped: each member sees
+# (NEVER named "user"/"tenant" reserved names). Owner-scoped: each member sees
 # their own profile; staff see all members in their location tenant.
 Member = {
     "schema_type": "object",
@@ -255,12 +255,12 @@ CheckIn = {
     ],
 }
 
-SUPERO_APP_NAMESPACE = "pulsefitness"  # belt-and-suspenders fallback (§5); every dict already carries it.
+SUPERO_APP_NAMESPACE = "pulsefitness"  # belt-and-suspenders fallback; every dict already carries it.
 
 ALL_SCHEMAS = [
     Location, Trainer, FitnessClass, ClassSession, Booking,
     Membership, Payment, Member, CheckIn,
 ]
 
-# Public (logged-out) catalog reads — snake_case slugs (§7.9, gotcha #5).
+# Public (logged-out) catalog reads — snake_case slugs.
 PUBLIC_SCHEMAS = ["location", "trainer", "fitness_class"]

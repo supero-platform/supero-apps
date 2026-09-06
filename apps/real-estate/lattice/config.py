@@ -1,11 +1,11 @@
-# config.py — LATTICE app identity, tenants, users, services (SKILLS.md §10)
+# config.py — LATTICE app identity, tenants, users, services
 #
 # MULTI-TENANT: each property-management COMPANY is a Supero tenant. default-tenant
 # is admin-only (company super-admin home); the real PM companies are the named
 # tenants below. The CLI provisions every tenant in `tenants` at bootstrap, and
 # seed_record(..., tenant_name=...) writes each company's data into its own tenant.
 #
-# NOTE (SKILLS.md gap — see final report): the runtime `isMultiTenant` /
+# NOTE: the runtime `isMultiTenant` /
 # `tenantNoun` flags in window.__SUPERO_CONFIG are driven by the env vars
 # SUPERO_IS_MULTI_TENANT / SUPERO_TENANT_NOUN_SINGULAR / SUPERO_TENANT_NOUN_PLURAL
 # (read by the CLI at config.js generation), NOT by any AppConfig field. We mirror
@@ -52,7 +52,7 @@ class AppConfig:
         # on default-tenant). Use this to switch between PM companies.
         {"email": "admin@lattice.app", "password": "Password123!", "role": "tenant_admin",
          "full_name": "Lattice Super Admin", "tenant": "default-tenant"},
-        # Platform tester — keep this account in every app (§10):
+        # Platform tester — keep this account in every app:
         {"email": "testapp@test.com", "password": "Password123!", "role": "developer",
          "full_name": "App Tester", "tenant": "default-tenant"},
         # Per-company property managers (staff = tenant_admin in their own company):
@@ -69,7 +69,7 @@ class AppConfig:
          "full_name": "Omar Haddad", "tenant": "harbor-properties"},
     ])
 
-    # Only the integrations this app uses, with "workflows" LAST (§10):
+    # Only the integrations this app uses, with "workflows" LAST:
     services: list = field(default_factory=lambda: ["email", "sms", "stripe", "payment", "workflows"])
 
     public_schemas: list = field(default_factory=lambda: ["property", "unit"])

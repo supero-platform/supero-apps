@@ -10,7 +10,7 @@ seed_record = make_seed_record(ALL_SCHEMAS)   # MUST be module-level
 
 def ux(pid, w=1600, h=1100):
     # Curated, reliable Unsplash CDN images (direct images.unsplash.com, q=80).
-    # auto=format keeps them crisp+fast; thumbnail_url is the card size. (§10)
+    # auto=format keeps them crisp+fast; thumbnail_url is the card size.
     base = "https://images.unsplash.com/photo-" + pid + "?auto=format&fit=crop&q=80"
     return {"url": "%s&w=%d&h=%d" % (base, w, h),
             "thumbnail_url": "%s&w=800&h=600" % base}
@@ -35,7 +35,7 @@ def _plus_minutes(iso, minutes):
 
 
 # ============================================================================
-# ACCESS CONTROL (§6). tenant_user is fail-closed (default_access="none").
+# ACCESS CONTROL. tenant_user is fail-closed (default_access="none").
 #   - Location / Trainer / FitnessClass: SHARED read (public catalog).
 #   - ClassSession: SHARED read (members browse the schedule), staff manage it.
 #   - Booking / Membership / Payment / Member / CheckIn: PRIVATE, owner-scoped
@@ -83,7 +83,7 @@ POLICIES = [
 
 # ============================================================================
 # WORKFLOW: when staff confirm a booking, email + SMS the member in parallel,
-# then stamp workflow_status="processed" + processed_at (§6). object_type is
+# then stamp workflow_status="processed" + processed_at. object_type is
 # namespace-qualified: "pulsefitness:booking".
 # ============================================================================
 WORKFLOW_DEFINITIONS = [{

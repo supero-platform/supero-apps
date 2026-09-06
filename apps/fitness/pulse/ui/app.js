@@ -1,13 +1,13 @@
 // ui/app.js — PULSE: a multi-tenant fitness-chain app (Path B, full custom React).
 //
-// Audiences from one login (§8.2a), routed by ROLE:
-//   • logged-out visitor → public landing (hero + public catalog reads, §7.9)
+// Audiences from one login, routed by ROLE:
+//   • logged-out visitor → public landing (hero + public catalog reads)
 //   • logged-in staff/admin → operations console (manage classes/sessions/members,
 //     dashboards, ops board, booking-confirmation workflow) + TenantSwitcher for
 //     HQ super-admins (client.canSwitchTenant / client.setTenantOverride)
 //   • logged-in member → member portal (browse + book classes, my bookings, membership)
 //
-// Boundary discipline (§0/§4): every read/write/integration goes through the LOCKED
+// Boundary discipline: every read/write/integration goes through the LOCKED
 // client.* / services.*. Never re-declare a runtime global. Never call AppShell.render.
 (function () {
   var h = React.createElement;                 // React is a runtime global — never re-declare
@@ -57,7 +57,7 @@
     pilates: 'Pilates', boxing: 'Boxing', mobility: 'Mobility' };
   function catLabel(c) { return CAT_LABEL[c] || (c || 'Class'); }
 
-  // Public reads: relative path, proxied by server.py, NO auth headers (rule 6, §7.9).
+  // Public reads: relative path, proxied by server.py, NO auth headers (rule 6).
   // Logged-out client.getObjects auto-routes public schemas too — we use the explicit
   // fetch so the landing works even before any client state exists.
   function listPublic(schema) {
@@ -69,7 +69,7 @@
       .catch(function () { return []; });
   }
 
-  // Capability gate — never test only the literal 'tenant_admin' string (§7.5).
+  // Capability gate — never test only the literal 'tenant_admin' string.
   function isStaff() {
     try {
       return client.isAdmin() || client.canWrite('class_session') ||
@@ -77,7 +77,7 @@
     } catch (e) { return false; }
   }
 
-  // Register transactional extensions AFTER login (§13). ClassSession→booking,
+  // Register transactional extensions AFTER login. ClassSession→booking,
   // Booking→appointment, Membership, Payment. Single-schema services take a bare string.
   var __txnRegistered = false;
   function registerTxn() {
@@ -123,7 +123,7 @@
       props.hint && h('div', { className: 'text-sm text-slate-400 mt-1' }, props.hint));
   }
 
-  // A class/session card image with the SAFE image pattern (§7.10): img tag, not bg.
+  // A class/session card image with the SAFE image pattern: img tag, not bg.
   function CardImage(props) {
     var src = pulseImg(props.src);
     return h('div', { className: 'relative h-44 bg-slate-200 overflow-hidden' },
@@ -178,7 +178,7 @@
             h('button', { onClick: props.onJoin,
               className: 'px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow' }, 'Join Pulse')))),
 
-      // hero (img-based, never the broken bg pattern §7.10)
+      // hero (img-based, never the broken bg pattern)
       h('section', { className: 'relative' },
         h('div', { className: 'absolute inset-0' },
           h('img', { src: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=2000&h=1100',
@@ -280,7 +280,7 @@
       e.preventDefault(); setBusy(true);
       var p;
       if (mode === 'signup') {
-        p = client.signup(email, pw, fullName || email.split('@')[0]);   // §7.2 self-service signup
+        p = client.signup(email, pw, fullName || email.split('@')[0]);   // self-service signup
       } else {
         // 5-arg login (rule 7): domain, email, password, project, tenant
         p = client.login(cfg.domain, email, pw, cfg.project, cfg.tenant || 'default-tenant');
@@ -321,7 +321,7 @@
 
   // ───────────────────────── shared chrome ─────────────────────────
   function TenantSwitcher() {
-    // Only HQ super-admins may switch tenant scope (§9). Gated by capability.
+    // Only HQ super-admins may switch tenant scope. Gated by capability.
     if (!(client.canSwitchTenant && client.canSwitchTenant())) return null;
     var tenants = (cfg.tenants && cfg.tenants.length ? cfg.tenants : [
       { name: 'default-tenant', display_name: 'Pulse HQ' },
@@ -413,7 +413,7 @@
     var pendingBookings = book.rows.filter(function (b) { return b.status === 'requested'; }).length;
     var revenue = pay.rows.reduce(function (a, p) { return a + (p.status === 'captured' ? (p.amount || 0) : 0); }, 0);
 
-    // class-mix rollup (client-side, §7.3 fallback approach)
+    // class-mix rollup (client-side fallback approach)
     var mix = {};
     sess.rows.forEach(function (s) { var c = catLabel(s.category); mix[c] = (mix[c] || 0) + 1; });
     var chartData = Object.keys(mix).map(function (k) { return { label: k, value: mix[k] }; });
@@ -478,7 +478,7 @@
   function BookingOps() {
     var l = useList('booking');
     function confirm(b) {
-      // Confirm + fire the booking_confirmed workflow (email + SMS + stamp). §7.8
+      // Confirm + fire the booking_confirmed workflow (email + SMS + stamp).
       client.updateObject('booking', b.uuid, { status: 'confirmed' }, b)
         .then(function () {
           return runSaga('booking_confirmed', {
@@ -723,11 +723,11 @@
         onJoin: function () { setAuthMode('signup'); setShowAuth(true); },
       });
     }
-    // Route by ROLE (§8.2a) — gate on capability, never a hardcoded role string.
+    // Route by ROLE — gate on capability, never a hardcoded role string.
     return isStaff() ? h(AdminConsole, { onLogout: logout }) : h(MemberPortal, { onLogout: logout });
   }
 
-  // ───────────────────────── MOUNT (§8.1, rules 1/3/4/5) ─────────────────────────
+  // ───────────────────────── MOUNT ─────────────────────────
   var __root = null;
   function mountApp() {
     var _pl = document.getElementById('supero-preloader');   // remove the platform splash
@@ -749,6 +749,5 @@
       else if (n < 50) setTimeout(tick, 100);
     })();
   }
-  // "AppShell.render" appears only in this comment for grep validators — never called (rule 1).
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

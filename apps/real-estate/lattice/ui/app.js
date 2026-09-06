@@ -1,6 +1,6 @@
 // ui/app.js — LATTICE multi-tenant property management (Path B, full custom UI).
 //
-// Obeys the seven rules (§4): never AppShell.render(); never re-declare a library
+// Obeys the seven rules: never AppShell.render(); never re-declare a library
 // global; hooks once on the right; route in state (no hashchange); mount in a
 // sibling (#lattice-root), hide #root; public reads send NO auth headers and use a
 // RELATIVE /api/public path (never apiUrl → 405); client.login takes 5 args.
@@ -90,7 +90,7 @@
       .catch(function () { return []; });
   }
 
-  // Capability gate — never test a hardcoded role string (§7.5).
+  // Capability gate — never test a hardcoded role string.
   function isStaff() {
     try {
       return client.isAdmin() || client.canWrite('property') ||
@@ -693,13 +693,13 @@
     var list = props.data.rent_payment || [];
     var [busy, setBusy] = React.useState('');
     React.useEffect(function () {
-      // register the payment transactional extension once we're authed (§13)
+      // register the payment transactional extension once we're authed
       try { client.registerTransactionalExtensions({ payment: 'rent_payment' }); } catch (e) {}
     }, []);
 
     function pay(p) {
       setBusy(p.uuid);
-      // Drive the payment service: pending → authorized → captured (§13).
+      // Drive the payment service: pending → authorized → captured.
       var amt = p.amount || 0;
       client.transactional.payment.authorize(p.uuid)
         .then(function () { return client.transactional.payment.capture(p.uuid, 'rcpt_' + Date.now(), amt); })
@@ -864,6 +864,5 @@
       else if (n < 50) setTimeout(tick, 100);
     })();
   }
-  // The literal "AppShell.render" appears only in this comment for grep validators — never called (rule 1).
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

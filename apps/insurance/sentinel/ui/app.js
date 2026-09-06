@@ -1,7 +1,6 @@
 // ui/app.js — Sentinel insurance policy & claims platform (custom UI).
 // Globals (React, ReactDOM, client, services, showToast, resolveImageUrl, formatCurrency,
 // ErrorBoundary) come from the Supero runtime BEFORE this file — never re-declare them.
-// The literal "AppShell.render" appears only in this comment for grep validators; never called.
 (function () {
   var h = React.createElement;
 

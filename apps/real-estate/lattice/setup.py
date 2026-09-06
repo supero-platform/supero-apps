@@ -5,7 +5,7 @@ from supero.app_setup import AppSetup, PolicyDef, PolicyRule, make_seed_record, 
 from config import AppConfig
 from schemas import ALL_SCHEMAS, PUBLIC_SCHEMAS, SUPERO_APP_NAMESPACE
 
-# NOTE (SKILLS.md gap): §10/§5 show `make_seed_record(ALL_SCHEMAS)`, but the
+# NOTE: show `make_seed_record(ALL_SCHEMAS)`, but the
 # installed SDK's make_seed_record(namespace) expects the NAMESPACE STRING and
 # calls namespace.strip() — passing a list raises AttributeError at import. We
 # pass the literal namespace, which is what the real SDK wants. MUST be module-level.
@@ -29,7 +29,7 @@ def _in_days(d, hour=9):
     return t.isoformat() + "Z"
 
 
-# ── Access control (§6). tenant_user (resident) is fail-closed. ───────────────
+# ── Access control. tenant_user (resident) is fail-closed. ───────────────
 #   - Property / Unit: SHARED read (residents browse the portfolio + listings).
 #   - Resident / Lease / RentPayment / MaintenanceRequest / Application: PRIVATE,
 #     each resident sees only their own rows (owner_username == $user.name).
@@ -71,7 +71,7 @@ POLICIES = [
 ]
 
 # ── Workflow: when staff resolve a maintenance request, email the resident, then
-#    stamp workflow_status="processed" + processed_at (§6). object_type is
+#    stamp workflow_status="processed" + processed_at. object_type is
 #    namespace-qualified "latticepm:maintenance_request".
 WORKFLOW_DEFINITIONS = [{
     "workflow_id": "maintenance_resolved",

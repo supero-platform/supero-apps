@@ -134,7 +134,7 @@
       borderRadius: 14, padding: 18 }, props.style || {}) }, props.children);
   }
 
-  // ---- aggregate fetch with client-side fallback (§7.3) --------------------
+  // ---- aggregate fetch with client-side fallback --------------------
   function aggregateCountBy(type, field, records) {
     // try the platform aggregate endpoint; ALWAYS fall back to a client-side rollup so a shape
     // change can't blank the dashboard.

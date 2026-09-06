@@ -42,7 +42,22 @@ requests it with a valid Cascade Assurance staff token. Expects a refusal.
 
 **They prove**, on this deployment, for these entities: the rules declared in
 [`apps/insurance/sentinel/setup.py`](../apps/insurance/sentinel/setup.py) are applied
-by the server, on a direct API call, with a valid token, with no browser involved.
+by the server, on a direct API call, with a valid token, with no browser involved —
+across every read path this role can reach, and under both spellings the API accepts
+for the object type.
+
+That last clause is not decoration. `/query` takes the type as `type` **or**
+`obj_type`, and those two once resolved differently: the controls that granted access
+read both, and the three that restricted the response read only `type`. A request
+carrying `obj_type` passed authorization and then skipped row scoping and field hiding
+together. Renaming one JSON key was the entire exploit. Script `02` now asserts both
+spellings, so a regression shows up here in ten seconds instead of in somebody's
+pen-test report.
+
+**Paths checked by `02`:** list, `GET` by uuid, and `POST /query` under both spellings.
+`stats` and `back-refs` are not asserted because this role gets HTTP 403 on both —
+denied outright rather than filtered, so there is nothing to assert about their field
+handling from this account.
 
 **They do not prove:**
 

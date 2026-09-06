@@ -75,8 +75,8 @@ When you make schema changes or want to refresh AI-generated code:
 2. Download the new tarball (name format: `<project>-<domain>.tar.gz`)
 3. Extract over your existing directory:
    ```bash
-   tar -xzf pet-grooming-salon-management.tar.gz \
-       -C ~/mani/ --overwrite
+   tar -xzf your-app.tar.gz \
+       -C ~/projects/ --overwrite
    ```
 4. Re-run setup:
    ```bash
@@ -163,7 +163,7 @@ For Docker, update `.env` then `docker compose restart`.
 ### Direct Python
 ```bash
 # Remove everything including venv
-rm -rf ~/mani/pet-grooming-salon-management
+rm -rf ~/projects/your-app
 
 # Optionally, also remove the Supero project from the admin panel
 ```
@@ -189,7 +189,7 @@ docker rmi yourregistry/your-app:v1.0.0
 | Card appearance | `ui/app.js` → `cardTemplate` on each tab | [Card templates](#card-templates) |
 | Custom action buttons | `ui/app.js` → `actionButtons` | [Action buttons](#action-buttons) |
 | Public-facing pages (SEO) | `ui/app.js` → `publicSchemas` + `introSection` | [Public pages](#public-pages) |
-| Multi-tenant "Salon" / "Firm" wording | `.env` → `SUPERO_TENANT_NOUN_SINGULAR` | [Tenant terminology](#tenant-terminology) |
+| Multi-tenant terminology (Singular/Plural noun) | `.env` → `SUPERO_TENANT_NOUN_SINGULAR` | [Tenant terminology](#tenant-terminology) |
 | Admin email, backend URL | `.env` | [Environment](#environment-variables) |
 | Schema definitions, seed data | `schemas.py`, `setup.py` | [Backend customization](#backend-customization) |
 | User roles, RBAC policies | `setup.py` or admin panel | [Access control](#access-control) |
@@ -226,7 +226,7 @@ AppShell.render({
 - `image` — background image URL (Pexels/Unsplash, HTTPS only). Omit for gradient-only hero
 - `gradient` — CSS gradient as fallback when no image is set, or as overlay
 
-**Tip for hero images**: use Pexels (free, commercial OK). Example search: [pexels.com/search/pet-grooming](https://pexels.com/search/pet-grooming) → click photo → copy `.jpg` URL.
+**Tip for hero images**: use Pexels (free, commercial OK). Example search: [pexels.com/search/app](https://pexels.com/search/app) → click photo → copy `.jpg` URL.
 
 ---
 

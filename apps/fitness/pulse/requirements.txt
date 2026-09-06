@@ -1,1 +1,1 @@
-supero
+supero==3.6.4

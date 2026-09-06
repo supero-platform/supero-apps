@@ -13,7 +13,7 @@ you need to reason about, debug, and predict behaviour.
 ```
   YOU WRITE                    THE PLATFORM GIVES YOU              YOU GET BACK
   ─────────                    ──────────────────────              ────────────
-  schemas.py     ──upload──▶   REST resources per type      ──▶    /crud/{domain}/{Type}
+  schemas.py     ──upload──▶   REST resources per type      ──▶    /api/v1/crud/{domain}/{type}
   (data model)                 validation                          400 on bad input
                                a typed SDK                         autocomplete
                                admin CRUD screens                  app.supero.dev
@@ -54,8 +54,9 @@ When your UI (or curl, or an AI agent over MCP) calls the API:
 
 The important step is **③ before ⑤**. Access rules are applied on the server, before the
 response is built — not filtered by your UI afterwards. That's the whole reason a patient
-can call `GET /crud/Appointment` with a perfectly valid token, via curl, with no UI at all,
-and still never receive `clinical_notes`. The field isn't hidden; it's never serialized.
+can call `GET /api/v1/crud/{domain}/appointment` with a perfectly valid token, via curl,
+with no UI at all, and get back appointments with `clinical_notes` absent. The field isn't
+hidden by the client; the server removes it before writing the response.
 
 ## Multi-tenancy: the nesting
 

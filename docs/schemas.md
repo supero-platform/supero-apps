@@ -36,11 +36,11 @@ Note the real vocabulary: **`mandatory`** (not `required`), **`values`** for enu
 Upload it (`./run.sh` does this) and you get:
 
 ```
-POST   /crud/Provider
-GET    /crud/Provider/{id}
-PUT    /crud/Provider/{id}
-DELETE /crud/Provider/{id}
-GET    /crud/Provider?filters=...
+POST   /api/v1/crud/{domain}/provider
+GET    /api/v1/crud/{domain}/provider/{id}
+PUT    /api/v1/crud/{domain}/provider/{id}
+DELETE /api/v1/crud/{domain}/provider/{id}
+GET    /api/v1/crud/{domain}/provider?filters=...
 ```
 
 plus validation, a typed SDK, and admin CRUD screens.
@@ -101,9 +101,10 @@ Two mechanisms, both enforced **server-side**:
 - **Field hiding** — `hidden_fields=[...]` strips `clinical_notes`, `diagnosis`, and
   `internal_billing_code` from the response entirely.
 
-The point: a patient calling `GET /crud/Appointment` **with their own valid token, via
-curl, bypassing the UI**, still cannot read `clinical_notes`. The server never serializes
-the field. That's the difference between access control and a `display:none`.
+The point: a patient calling `GET /api/v1/crud/{domain}/appointment` **with their own valid
+token, via curl, bypassing the UI**, gets their appointments back with `clinical_notes`
+absent from the response body. The server removes it before the response is written. That's
+the difference between access control and a `display:none`.
 
 `sentinel` hides fraud scores and internal notes from claimants the same way, and
 `brightsmile` hides chart notes and diagnoses from patients. Those three —

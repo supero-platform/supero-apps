@@ -10,16 +10,16 @@ No SDK to wire, no keys in code. Configure credentials in the admin panel.
 
 ## Services
 
-These are the service ids the 15 apps in this repo actually enable, counted from their
+These are the service ids the 19 apps in this repo actually enable, counted from their
 `config.py` files. There is no `payments` or `files` service — payments are `stripe_checkout`,
 and file/image upload is built into the SDK rather than switched on here.
 
 | Service | Gives you | Apps using it |
 |---|---|---|
-| `email` | Transactional email, templates | all 15 |
-| `workflows` | Multi-step sagas with compensation, event bindings | all 15 |
-| `ai` | Grounded Q&A over your data, generation, summarization | 11 |
-| `sms` | Text messages | 8 |
+| `email` | Transactional email, templates | all 19 |
+| `workflows` | Multi-step sagas with compensation, event bindings | all 19 |
+| `ai` | Grounded Q&A over your data, generation, summarization | 13 |
+| `sms` | Text messages | 11 |
 | `slack` | Channel notifications, escalation | 7 |
 | `stripe_checkout` | Hosted checkout, payment links, session lookup | 6 — `atelier`, `fieldops`, `ledgerline`, `pulsefit`, `relay`, `tavola` |
 | `google_calendar` | Calendar events | 3 — `fieldops`, `lumen`, `relay` |
@@ -106,6 +106,14 @@ services = ["ai", "email", "slack", "workflows"]
 public_schemas = ["article"]     # what the AI may read for public answers
 ```
 
-The AI is scoped by the same access rules as everyone else. It cannot read a field the
-asking user isn't allowed to read — so an AI assistant can't become a data-exfiltration
-path.
+The AI runs as the asking user. It carries that user's own credential to the same API
+everyone else uses — there is no service account behind it and no elevated path, so it does
+not get to see more than the person asking. Its reads go through the same access-policy code
+as a direct API call.
+
+That is a statement about the *mechanism*, and it is the honest form of the claim: the AI is
+not a privilege escalation. It is not a promise that every field on every object type is
+covered in every configuration — access rules are yours to declare, and a rule you did not
+write is a rule the AI is not bound by either. If you are relying on a specific field staying
+out of an AI answer, assert it in a test against your own deployment rather than taking this
+paragraph's word for it.

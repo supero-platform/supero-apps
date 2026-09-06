@@ -35,7 +35,7 @@ hides the platform's default shell with `#root,#app{display:none!important}` and
 
 ## Data & access
 
-- Read/write through the injected `client` (CRUD over `/crud/{domain}/{Type}`).
+- Read/write through the injected `client` (CRUD over `/api/v1/crud/{domain}/{type}`).
 - Access rules live in `setup.py` as `PolicyRule(entity=..., can_read=..., can_create=...,
   filter_field=..., hidden_fields=[...])`, enforced **server-side**. Row scoping and field
   hiding happen on the platform, not in this UI — don't reimplement them client-side.

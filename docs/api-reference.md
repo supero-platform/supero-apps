@@ -68,15 +68,20 @@ See [schemas.md](schemas.md) for the schema format.
 ## CRUD
 
 Once your schema is uploaded, every object type gets a REST resource. Paths are scoped to
-your domain: `/crud/{domain}/{Type}`.
+your domain: `/api/v1/crud/{domain}/{type}`.
+
+**Casing matters, and the two columns below differ on purpose.** In `schemas.py` you declare
+a type as `Provider`. The SDK takes that name as you wrote it; the URL uses the snake_case
+form. So `org.crud.list("Provider")` calls `GET /api/v1/crud/{domain}/provider`, and a
+two-word type like `ClinicalNote` becomes `clinical_note` in the path.
 
 | Operation | REST | SDK |
 |---|---|---|
-| Create | `POST /crud/{domain}/{Type}` | `org.crud.create("Type", {...})` |
-| Read one | `GET /crud/{domain}/{Type}/{uuid}` | `org.crud.get("Type", uuid)` |
-| List / query | `GET /crud/{domain}/{Type}?filters=...` | `org.crud.list("Type", filters={...})` |
-| Update | `PUT /crud/{domain}/{Type}/{uuid}` | `org.crud.update("Type", uuid, {...})` |
-| Delete | `DELETE /crud/{domain}/{Type}/{uuid}` | `org.crud.delete("Type", uuid)` |
+| Create | `POST /api/v1/crud/{domain}/{type}` | `org.crud.create("Type", {...})` |
+| Read one | `GET /api/v1/crud/{domain}/{type}/{uuid}` | `org.crud.get("Type", uuid)` |
+| List / query | `GET /api/v1/crud/{domain}/{type}?filters=...` | `org.crud.list("Type", filters={...})` |
+| Update | `PUT /api/v1/crud/{domain}/{type}/{uuid}` | `org.crud.update("Type", uuid, {...})` |
+| Delete | `DELETE /api/v1/crud/{domain}/{type}/{uuid}` | `org.crud.delete("Type", uuid)` |
 
 All CRUD calls require `Authorization: Bearer <token>` (or an `X-API-Key`). **Access
 policies from `setup.py` are applied server-side** — row scoping and field hiding happen

@@ -104,6 +104,7 @@ jobs:
             if [ -f "$d.env.example" ] && grep -qE '^SUPERO_PASSWORD=.+' "$d.env.example"; then
               echo "::error file=$d.env.example::must ship blank"; fail=1
             fi
+            [ -d "$dtests" ] || { echo "::error file=$d::missing tests/ directory"; fail=1; }
           done
           exit $fail
 

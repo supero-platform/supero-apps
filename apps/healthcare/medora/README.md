@@ -428,8 +428,10 @@ Update `ui/config.js` with your production API URL before deploying.
 Your application code (`ui/app.js`, `schemas.py`, `setup.py`, and any
 custom code you write) is yours.
 
-The Supero platform, SDK, and `supero-ui.js` library are proprietary.
-See https://supero.dev/terms for details.
+The `supero` SDK is MIT ([PyPI](https://pypi.org/project/supero/)), and so is
+`supero-ui.js`, which ships inside that wheel. The hosted platform the app calls is a
+managed service and is not open source — see
+[how this works, honestly](../../../README.md#how-this-works-honestly).
 
 ---
 

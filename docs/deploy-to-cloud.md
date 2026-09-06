@@ -154,8 +154,8 @@ Supero domain, reachable over the API).
   just make sure only the one-off `--setup-only` pass ever bootstraps.
 - **Reproducible builds.** `requirements.txt` pins the SDK (`supero==3.6.4`) and `run.sh`
   installs from it, so a rebuild in six months gets the same SDK. Bump it deliberately.
-- **Costs.** You pay your cloud for the container; you pay Supero for platform usage. See
-  [pricing](https://www.supero.dev/pricing).
+- **Costs.** You pay your cloud for the container; you pay Supero for platform usage. Usage
+  pricing isn't published yet — it's in the dashboard once you have a domain, or ask us.
 
 ## Custom domain
 

@@ -253,9 +253,10 @@ they are **not HIPAA-certified and ship with no BAA**. Before putting real PHI, 
 regulated financial data into anything here, talk to us about compliance posture, data
 residency, and a BAA — don't assume the demo covers it. See [SECURITY.md](SECURITY.md).
 
-**Pricing.** There's a free tier (enough to run these), then usage-based. Real numbers are
-on the [pricing page](https://www.supero.dev/pricing) — we don't hardcode them here because
-they change.
+**Pricing.** There's a free tier — enough to run everything in this repo — then usage-based
+beyond it. **We don't publish the numbers yet.** They're visible in the dashboard once you
+have a domain, which costs nothing to create, and you can ask us before you get that far.
+We'd rather say that plainly than link you to a page that isn't there.
 
 ---
 
@@ -313,7 +314,8 @@ No. `./run.sh` registers the domain you name in `.env`. No signup wall.
 No. It's your schema and your domain. Apps run on your machine, your cloud, or a managed URL.
 
 **What's the catch on the free tier?**
-Usage limits. The [pricing page](https://www.supero.dev/pricing) has current numbers.
+Usage limits. The current numbers aren't published — they're in the dashboard once you have
+a domain (free to create, no card), or ask us.
 
 **Can I use these commercially?**
 Yes — the app source here is MIT. Build on it, sell it, fork it.

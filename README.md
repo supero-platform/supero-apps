@@ -35,6 +35,8 @@ git clone https://github.com/supero-platform/supero-apps
 cd supero-apps/verify && ./02-rbac-enforcement.sh
 ```
 
+![Terminal output of verify/02-rbac-enforcement.sh — the claims adjuster sees fraud_score and internal_notes; the policyholder gets the same claim with both fields absent](.github/assets/verify-proof.svg)
+
 That script logs into the live insurance demo as a claims adjuster and as a
 policyholder, finds one claim both can see, and compares the two responses. The
 adjuster gets `fraud_score` and `internal_notes`; the policyholder gets the same

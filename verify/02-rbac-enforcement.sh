@@ -94,9 +94,72 @@ else:
 sys.exit(rc)
 PY
 rc=$?
+[ $rc -ne 0 ] && exit $rc
 
-if [ $rc -eq 0 ]; then
-  head1 "Result: the policy in setup.py is what the API enforces."
-  dim   "Change hidden_fields in your own clone, re-run, and watch this flip."
+# ---------------------------------------------------------------------------
+# Same rule, other spellings and other read paths.
+#
+# The check above proves the policy holds on the LIST path with the ordinary
+# request shape. That is the path that works — and a suite that only tests the
+# path that works is not evidence, it is a selfie.
+#
+# /query accepts the object type as `type` OR `obj_type`. Those spellings once
+# resolved differently: the controls that GRANTED access read both, and the three
+# that RESTRICTED the response read only `type`, so a body carrying `obj_type`
+# passed authorization and then skipped row scoping and field hiding together.
+# Renaming one JSON key was the whole exploit.
+#
+# So the spelling is asserted here rather than hedged in prose. If a future change
+# reintroduces the split, this goes red on a live deployment in ten seconds.
+# ---------------------------------------------------------------------------
+
+head1 "Same rule, other spellings"
+
+probe_query() {   # probe_query <label> <json-body>
+  local label="$1" body="$2" resp code out
+  resp=$(api_post "$MEMBER" "/api/v1/crud/$DOMAIN/query" "$body")
+  code=$(status_of "$resp")
+  out=$(body_of "$resp" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    print("UNPARSEABLE 0"); raise SystemExit
+rows = (d.get("data") or d).get("objects") or d.get("results") or []
+leaked = sorted({k for r in rows if isinstance(r, dict)
+                 for k in ("fraud_score", "internal_notes") if k in r})
+print(("LEAK " if leaked else "CLEAN ") + str(len(rows)) + " " + ",".join(leaked))')
+  set -- $out
+  case "$1" in
+    CLEAN)       pass "$label -> HTTP $code, $2 row(s), no hidden field present" ;;
+    LEAK)        fail "$label -> HTTP $code LEAKED: $3" ;;
+    UNPARSEABLE) fail "$label -> HTTP $code, response could not be parsed" ;;
+  esac
+}
+
+probe_query 'POST /query {"type":"claim"}'      '{"type":"claim","limit":25}'
+probe_query 'POST /query {"obj_type":"claim"}'  '{"obj_type":"claim","limit":25}'
+
+# The read paths a policyholder can actually reach. stats and back-refs are not
+# listed because this role gets HTTP 403 on both — denied outright rather than
+# filtered, so there is nothing to assert about their field handling here.
+one_uuid=$(printf '%s' "$member_body" | python3 -c '
+import json, sys
+rows = json.load(sys.stdin).get("results") or []
+print(next((r["uuid"] for r in rows if r.get("uuid")), ""))')
+
+if [ -n "$one_uuid" ]; then
+  gb=$(body_of "$(api_get "$MEMBER" "/api/v1/crud/$DOMAIN/claim/$one_uuid")")
+  printf '%s' "$gb" | python3 -c '
+import json, sys
+d = json.load(sys.stdin); o = (d.get("data") or d); o = o.get("claim") or o
+leaked = [k for k in ("fraud_score", "internal_notes") if isinstance(o, dict) and k in o]
+print("  " + ("FAIL  GET by uuid LEAKED: " + ",".join(leaked) if leaked
+      else "PASS  GET by uuid -> no hidden field present"))'
+else
+  dim "  (no readable claim uuid — skipped the by-uuid path)"
 fi
-exit $rc
+
+head1 "Result: the policy in setup.py is what the API enforces."
+dim   "Change hidden_fields in your own clone, re-run, and watch this flip."
+exit $FAILURES

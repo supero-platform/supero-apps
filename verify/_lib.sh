@@ -68,6 +68,13 @@ api_get() {
        -H "Authorization: Bearer $1" "$API$2"
 }
 
-# status_of / body_of split what api_get returns
+# api_post <token> <path> <json> -> prints "BODY<newline>HTTP_STATUS"
+api_post() {
+  curl -sS -A "$UA" -w '\n%{http_code}' \
+       -H "Authorization: Bearer $1" -H 'Content-Type: application/json' \
+       -d "$3" "$API$2"
+}
+
+# status_of / body_of split what api_get / api_post return
 status_of() { printf '%s' "$1" | tail -n1; }
 body_of()   { printf '%s' "$1" | sed '$d'; }

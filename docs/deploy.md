@@ -69,3 +69,7 @@ own infrastructure" — yes, under an enterprise agreement.
 ## Custom domain
 
 Managed apps get `<name>.supero.live`. Bring your own domain from the admin panel.
+
+---
+
+📖 **This page is the short version.** For every deployment target in detail, see [docs.supero.dev/deployment/overview](https://docs.supero.dev/deployment/overview).

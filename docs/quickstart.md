@@ -143,3 +143,7 @@ entirely, delete it from the admin panel.
 - [Build with Claude over MCP](mcp.md) — have your AI edit the app
 - [Schemas](schemas.md) — inheritance, encryption, field-level access
 - [Deploy](deploy.md) — get off localhost
+
+---
+
+📖 **This page is the short version.** For the full quickstart, with screenshots, see [docs.supero.dev/getting-started/quick-start](https://docs.supero.dev/getting-started/quick-start).

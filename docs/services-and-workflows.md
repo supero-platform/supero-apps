@@ -117,3 +117,7 @@ covered in every configuration — access rules are yours to declare, and a rule
 write is a rule the AI is not bound by either. If you are relying on a specific field staying
 out of an AI answer, assert it in a test against your own deployment rather than taking this
 paragraph's word for it.
+
+---
+
+📖 **This page is the short version.** For the full workflows guide, see [docs.supero.dev/building-your-app/workflows-and-automation](https://docs.supero.dev/building-your-app/workflows-and-automation).

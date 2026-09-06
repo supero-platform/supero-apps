@@ -158,3 +158,7 @@ Edit `schemas.py`, then:
 Additive changes (new attributes) are safe. Removing or retyping an attribute affects
 existing data — read the [platform docs](https://www.supero.dev/platform) before doing it
 against anything real.
+
+---
+
+📖 **This page is the short version.** For the full schema-design guide, see [docs.supero.dev/building-your-app/schema-design](https://docs.supero.dev/building-your-app/schema-design).

@@ -1,4 +1,4 @@
-# CRUD_TESTS_TEMPLATE_VERSION: 11
+# CRUD_TESTS_TEMPLATE_VERSION: 14
 """
 crud_tests.py — CRUD smoke tests for all schemas.
 
@@ -360,6 +360,189 @@ def fetch_resolved_mandatory_map(session):
     return out
 
 
+# -- LIVE-READ-AWARE-V1 (L-10) ------------------------------------------------
+# The harness had NO model of connector-backed schemas, so it read the platform
+# CORRECTLY refusing a write to a `live_read`-bound table as a test FAILURE. In
+# one QA run that single blind spot manufactured 154 of 216 reported failures --
+# the platform had behaved correctly every single time.
+#
+# The fix is NOT to swallow 403s. It is to learn, from the SAME authority the
+# write gate itself consults, WHICH schemas are read-only, and then assert the
+# CORRECT behaviour for them: a write MUST be refused AND a read MUST still work.
+#
+# GET /api/v1/domains/{domain}/schemas stamps read_only=true + access_mode on
+# every live-ro / warehouse-bound schema (platform-core _stamp_read_only, fed by
+# connector_proxy_service.get_domain_access_modes) -- the identical live binding
+# that makes connector-service answer 403 read_only_connector_schema.
+# Returns {snake_name: access_mode}. Fail-soft to {}: an unstamped listing just
+# falls back to the response-marker check below, never to a false PASS.
+def fetch_read_only_map(session):
+    out = {}
+    try:
+        r = session.get(
+            f"{BASE_URL}/api/v1/domains/{DOMAIN}/schemas",
+            params={"include_content": "true"}, timeout=30,
+        )
+        if r.status_code not in (200, 201):
+            return out
+        body = r.json() or {}
+    except Exception:
+        return out
+    rows = body.get("schemas")
+    if not isinstance(rows, list):
+        rows = body.get("results") if isinstance(body.get("results"), list) else []
+    for s in rows:
+        if not isinstance(s, dict):
+            continue
+        name = s.get("name") or s.get("qualified_name")
+        if not name:
+            continue
+        _ro = s.get("read_only")
+        if _ro is not True and isinstance(s.get("content"), dict):
+            _ro = s["content"].get("read_only")
+        if _ro is True:
+            out[_to_snake(str(name).split(":")[-1])] = (
+                s.get("access_mode") or "read-only source")
+    return out
+
+
+# The platform's POSITIVE assertion that it refused this write BY DESIGN because
+# the schema is bound to a read-only source. Two spellings, both authoritative:
+#   read_only_connector_schema -- connector-service, live_read table (proxied
+#                                 verbatim by platform-core _maybe_live_write)
+#   read_only_schema           -- platform-core _raise_read_only_write
+# A bare 403, or an RBAC denial, is NOT this and must never be treated as one --
+# that is the whole difference between suppressing a known-correct rejection and
+# hiding an unknown one.
+_READ_ONLY_MARKERS = ("read_only_connector_schema", "read_only_schema")
+
+
+def _is_read_only_rejection(resp):
+    try:
+        text = resp.text or ""
+    except Exception:
+        text = ""
+    return any(m in text for m in _READ_ONLY_MARKERS)
+
+
+# -- STRUCTURAL-VS-TRANSIENT-V1 (L-08) ----------------------------------------
+# Mirrors the seed classifier (app_setup._seed_response_is_retryable): 429/5xx
+# and transport errors are TRANSIENT (retryable, non-fatal by default); 4xx
+# validation / routing / RBAC verdicts are deterministic app or schema bugs and
+# are STRUCTURAL (fatal by default). Keeping both knobs on one classification is
+# the point -- SUPERO_STRICT and SUPERO_STRICT_SEED must not drift apart.
+_TRANSIENT_RE = _re.compile(
+    r"request error|timed out|timeout|connection|max retries"
+    r"|HTTP (?:429|5[0-9][0-9])", _re.IGNORECASE)
+
+
+def _failure_is_transient(msgs):
+    """True only when EVERY FAIL line in msgs has a transient shape. One
+    structural failure makes the whole result structural -- never the reverse."""
+    saw = False
+    for m in msgs:
+        if m.lstrip().startswith("FAIL"):
+            saw = True
+            if not _TRANSIENT_RE.search(m):
+                return False
+    return saw
+
+
+# -- FAILURE-CAUSE-AGGREGATION-V1 (L-12) --------------------------------------
+# The failure block used to print ONE LINE PER FAILED ASSERTION. A real run
+# emitted 216 of them; they collapsed to FOUR distinct causes. A 216-line list
+# is not a report, it is the raw array -- the reader has to do the grouping the
+# harness declined to do, and the headline number ("216 test(s) FAILED") measures
+# how many times we asked, not how many things are wrong.
+#
+# Causes must collapse ACROSS schemas and principals, so normalisation has to
+# remove the parts that vary per check while keeping the part that identifies the
+# cause. The schema names are substituted by NAME (we know the exact set from
+# ALL_SCHEMAS -- no guessing), which is what lets "Object type 'member' not
+# found" and "Object type 'order' not found" land in one bucket instead of 36.
+#
+# NOTE ON REGEX STYLE: this whole module is generated from a NON-RAW template
+# string, so a backslash class like \b or \d would be interpreted (or
+# deprecation-warned) on the way out. Character classes ([0-9]) and plain
+# str.replace are used throughout for that reason -- same convention as
+# _TRANSIENT_RE above. Do not "simplify" them back to \d.
+_UUID_RE = _re.compile(
+    "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", _re.IGNORECASE)
+_NUM_RE = _re.compile("[0-9]+")
+_HTTP_RE = _re.compile("HTTP ([0-9]{3})")
+
+
+def _norm_names(all_schemas):
+    """Every spelling a schema name can appear under in a response body,
+    longest first so 'order_item' is replaced before 'order'."""
+    names = set()
+    for s in all_schemas or []:
+        n = s.get("name") if isinstance(s, dict) else None
+        if not n:
+            continue
+        names.add(str(n).lower())
+        names.add(_to_snake(str(n)).lower())
+    return sorted((n for n in names if n), key=len, reverse=True)
+
+
+def _failure_cause(msgs, schema_names):
+    """Reduce a check's FAIL lines to (op, code, normalised_detail, raw_detail).
+
+    Uses the FIRST FAIL line: that is the one that decided the verdict, and the
+    lines after it are usually downstream consequences of the same cause.
+    """
+    line = ""
+    for m in msgs:
+        if m.lstrip().startswith("FAIL"):
+            line = m.strip()
+            break
+    if not line:
+        return ("", "", "unknown failure", "unknown failure")
+
+    parts = line.split(None, 2)
+    op = parts[1] if len(parts) > 1 else ""
+    rest = parts[2] if len(parts) > 2 else ""
+    # "Member [tenant_admin:admin]: HTTP 403 -- {...}" -> detail after the label
+    detail = rest.split(": ", 1)[1] if ": " in rest else rest
+
+    hit = _HTTP_RE.search(detail)
+    code = ("HTTP " + hit.group(1)) if hit else ""
+
+    norm = detail.lower()
+    for nm in schema_names:
+        norm = norm.replace(nm, "<schema>")
+    norm = _UUID_RE.sub("<id>", norm)
+    norm = _NUM_RE.sub("<n>", norm)
+    norm = " ".join(norm.split())[:160]
+    return (op, code, norm, detail)
+
+
+def _group_failures(failures):
+    """Group (label, transient, op, code, norm, detail) tuples by (code, norm).
+
+    Returns groups ordered by count desc. A group is structural unless EVERY
+    check in it was transient -- same one-structural-poisons-the-group rule
+    _failure_is_transient applies within a single check.
+    """
+    causes = {}
+    order = []
+    for label, transient, op, code, norm, detail in failures:
+        key = (code, norm)
+        if key not in causes:
+            causes[key] = {"code": code, "detail": detail, "ops": set(),
+                           "labels": [], "count": 0, "transient": True}
+            order.append(key)
+        c = causes[key]
+        c["count"] += 1
+        c["transient"] = c["transient"] and transient
+        if op:
+            c["ops"].add(op)
+        if len(c["labels"]) < 3:
+            c["labels"].append(label)
+    ranked = sorted(range(len(order)), key=lambda i: (-causes[order[i]]["count"], i))
+    return [causes[order[i]] for i in ranked]
+
+
 def is_entity_seeded(session, schema_name):
     """REAL-CREATE-SEEDED-V1: the smoke test runs AFTER setup, so a seeded
     entity already has >=1 record. A live LIST count >0 PROVES the entity is
@@ -486,7 +669,8 @@ def _policy_allows(policy, action, schema_name):
 
 def test_schema_crud(session, schema_name, payload, label,
                      kind="plain", soft_reason="", seeded=False,
-                     unsatisfiable=False, caps=None):
+                     unsatisfiable=False, caps=None, read_only_mode=None,
+                     cleanup_session=None):
     msgs = []
     created_uuid = None
     # SUPERO_TEMPLATE_FIX_V1 — restored original template line.
@@ -515,6 +699,59 @@ def test_schema_crud(session, schema_name, payload, label,
             return False, msgs
 
         _role = label.split(":", 1)[0]
+        # LIVE-READ-AWARE-V1 (L-10) — read-only is a DATA-SOURCE capability, not
+        # an RBAC grant: it binds admins too (see platform-core
+        # _assert_schema_writable, "Role-INDEPENDENT"). So it is evaluated BEFORE
+        # any role/policy check, both of which are about WHO is asking rather than
+        # WHETHER the target accepts writes at all.
+        #   read_only_mode  -> the schema CATALOG stamped this schema live-ro /
+        #                      warehouse (same live binding the write gate uses)
+        #   _is_read_only_rejection -> the platform's own positive marker for the
+        #                      same verdict, used when the best-effort stamp fell
+        #                      open (stamping is explicitly documented fail-soft).
+        _ro_declared = read_only_mode is not None
+        _ro_rejected = (r.status_code == 403 and _is_read_only_rejection(r))
+        if _ro_declared or _ro_rejected:
+            _ro_src = read_only_mode or "live-read binding"
+            if r.status_code in (200, 201):
+                # The platform ACCEPTED a write to a read-only source. This is a
+                # real enforcement bug and the single most valuable thing this
+                # branch can catch — it must never be downgraded.
+                msgs.append(
+                    f"  FAIL CREATE {schema_name} [{label}]: schema is read-only "
+                    f"({_ro_src}) but the write was ACCEPTED (HTTP {r.status_code}) "
+                    f"-- read-only enforcement is broken"
+                )
+                return False, msgs
+            if r.status_code != 403:
+                msgs.append(
+                    f"  FAIL CREATE {schema_name} [{label}]: read-only schema "
+                    f"({_ro_src}) expected a 403 refusal but got HTTP "
+                    f"{r.status_code} -- {r.text[:200]}"
+                )
+                return False, msgs
+            # A 403 here is the CORRECT platform behaviour. Prove the schema is
+            # genuinely READ-only rather than simply broken: the read path must
+            # still serve. A live_read table that cannot be read IS a failure, and
+            # requiring this is what keeps the suppression honest.
+            try:
+                _lr = session.get(url_base, timeout=15)
+            except Exception as e:
+                msgs.append(
+                    f"  FAIL LIST   {schema_name} [{label}]: write correctly refused "
+                    f"({_ro_src}) but LIST errored -- {e}")
+                return False, msgs
+            if _lr.status_code != 200:
+                msgs.append(
+                    f"  FAIL LIST   {schema_name} [{label}]: write correctly refused "
+                    f"({_ro_src}) but LIST returned HTTP {_lr.status_code} -- a "
+                    f"read-only source that cannot be READ is broken")
+                return False, msgs
+            _why = "catalog read_only" if _ro_declared else "platform read_only marker"
+            msgs.append(
+                f"  PASS READONLY {schema_name} [{label}]: write correctly refused "
+                f"403 ({_ro_src}; {_why}) and LIST reads OK")
+            return "read_only", msgs
         # PER-ENTITY-RBAC-V1 — a 403 is the CORRECT outcome when this role's
         # resolved policy does not grant create on THIS entity (a storefront
         # customer cannot create products/invoices/shipments). Recognize that as an
@@ -668,6 +905,7 @@ def test_schema_crud(session, schema_name, payload, label,
                 r = session.delete(f"{url_base}/{created_uuid}", timeout=15)
                 if r.status_code in (200, 204):
                     msgs.append(f"  PASS DELETE {schema_name} [{label}]")
+                    created_uuid = None
                 else:
                     msgs.append(
                         f"  WARN DELETE {schema_name} [{label}]: "
@@ -675,6 +913,25 @@ def test_schema_crud(session, schema_name, payload, label,
                     )
             except Exception as e:
                 msgs.append(f"  WARN DELETE {schema_name} [{label}]: {e} (cleanup)")
+
+        # SMOKETEST-CLEANUP-V1 — a principal that may CREATE but not DELETE (a
+        # customer role, by design) left its smoketest-* row behind on every run,
+        # and these runs target whatever tenant .env points at, including live
+        # demo tenants. The WARN above is unchanged, so what the run reports about
+        # that role is unchanged; the row is then removed with the admin session.
+        # Best-effort: it adds a line, never a failure.
+        if created_uuid and cleanup_session is not None and cleanup_session is not session:
+            try:
+                r = cleanup_session.delete(f"{url_base}/{created_uuid}", timeout=15)
+                if r.status_code in (200, 204):
+                    msgs.append(f"  NOTE CLEANUP {schema_name} [{label}]: "
+                                f"test row removed with the admin session")
+                else:
+                    msgs.append(f"  NOTE CLEANUP {schema_name} [{label}]: admin delete "
+                                f"HTTP {r.status_code} -- test row {created_uuid} remains")
+            except Exception as e:
+                msgs.append(f"  NOTE CLEANUP {schema_name} [{label}]: {e} -- "
+                            f"test row {created_uuid} remains")
 
     return passed, msgs
 
@@ -690,11 +947,25 @@ def main():
         sys.exit(2)
 
     hex_suffix = _uuid.uuid4().hex[:8]
+    # WRITE-LED-SUMMARY-V1 (L-11) — the verdict and the exit code are computed
+    # from ONE list (the seed path's SEED-VERDICT-AGREES-V1 lesson: a banner and
+    # a gate reading different state WILL drift, and did).
+    #
+    # FAILURE-CAUSE-AGGREGATION-V1 (L-12) — each entry is
+    #   (label, is_transient, op, error_code, normalised_message, raw_detail)
+    # so the block can group by CAUSE. EVERY append site must produce all six
+    # (append the `_failure_cause(...)` tuple); a 2-tuple appended anywhere makes
+    # _group_failures raise at unpack time.
     failures = []
+    writes_ok = 0     # REAL creates that returned 200/201 — the headline number
+    denied_ok = 0     # negative assertions ("correctly denied 403") that passed
+    readonly_ok = 0   # read-only schemas that correctly refused a write AND read
     cfg = AppConfig()
 
     enum_map = build_enum_map(ALL_SCHEMAS)
     object_schemas = [s for s in ALL_SCHEMAS if s.get("schema_type") == "object"]
+    # L-12: computed once; used to collapse per-schema wording in failure causes.
+    _schema_names = _norm_names(ALL_SCHEMAS)
 
     if not object_schemas:
         print("  No object schemas found -- skipping CRUD tests")
@@ -748,18 +1019,25 @@ def main():
     user_sessions = []
     for u in cfg.users:
         email    = u["email"]
-        # REPLACED-BY-3.5.0: no hardcoded password fallback.
+        # REPLACED-BY-3.5.0: no hardcoded password fallback (§1.7).
 
         password = u.get("password") or getattr(cfg, "default_user_password", "")
         role     = u.get("role", "tenant_user")
         token = login(email, password)
         if token:
-            user_sessions.append((make_session(token=token), role, email))
+            # PRINCIPAL-TENANT-V1 (L-11) — carry the principal's DECLARED tenant
+            # membership. config.users[].tenant is what provisioning actually
+            # honours, so it is what this principal may write into.
+            user_sessions.append((make_session(token=token), role, email,
+                                  u.get("tenant") or "default-tenant"))
         else:
             print(f"  Warning: Login failed for {email} (role={role}) -- skipping")
 
+    # The admin credential is the DOMAIN admin (platform_admin/domain_admin), the
+    # one principal base_route._require_tenant_access lets cross tenants, so it
+    # keeps the app tenant as its target.
     sessions_to_test = [
-        (admin_session, "tenant_admin", ADMIN_EMAIL),
+        (admin_session, "tenant_admin", ADMIN_EMAIL, tenant_name),
         *user_sessions,
     ]
 
@@ -779,8 +1057,57 @@ def main():
     # as an expected PASS, not a failure. Fail-soft: a None entry keeps the legacy
     # coarse role-level behavior for that session.
     caps_by_session = {}
-    for session, role, email in sessions_to_test:
+    for session, role, email, _tn in sessions_to_test:
         caps_by_session[id(session)] = fetch_my_policy(session)
+
+    # LIVE-READ-AWARE-V1 (L-10) — which schemas are bound to a READ-ONLY source.
+    read_only_map = fetch_read_only_map(admin_session)
+    if read_only_map:
+        print(f"  ({len(read_only_map)} schema(s) are read-only / live-read bound "
+              f"-- writes to these MUST be refused, reads MUST work)")
+
+    # PRINCIPAL-TENANT-V1 (L-11) — resolve each principal's OWN tenant ONCE.
+    # Every create used to be parented to ONE tenant (the first non-default entry
+    # in config.tenants) for EVERY principal. A tenant_admin provisioned into
+    # 'default-tenant' was therefore asked to write into e.g. 'harmony-arts', and
+    # the platform correctly answered 403 "You do not have access to this tenant"
+    # — base_route._require_tenant_access treats only platform_admin /
+    # platform_user / domain_admin as tenant-crossing, which is exactly why the
+    # domain-admin session passes and the config users do not. That fabricated one
+    # false failure PER SCHEMA for every such principal.
+    #
+    # An UNRESOLVABLE declared tenant is a REAL provisioning gap, not a fixture
+    # problem: it is reported ONCE (not once per schema) and stays a failure.
+    _tenant_uuid_cache = {tenant_name: tenant_uuid}
+
+    def _tenant_uuid_for(name):
+        if not name:
+            return tenant_uuid
+        if name not in _tenant_uuid_cache:
+            _tenant_uuid_cache[name] = fetch_tenant_uuid(admin_session, name)
+        return _tenant_uuid_cache[name]
+
+    runnable_sessions = []
+    for _si, (session, role, email, _tn) in enumerate(sessions_to_test):
+        _label = f"{role}:{email.split('@')[0]}"
+        _tu = _tenant_uuid_for(_tn)
+        if not _tu:
+            print(f"  x PROVISIONING [{_label}]: declared tenant '{_tn}' does not "
+                  f"exist in domain '{DOMAIN}' -- this principal cannot write "
+                  f"anywhere. Not a test artifact: fix provisioning or config.")
+            # L-12: this path has no FAIL lines to mine, so synthesize the cause
+            # through the SAME extractor the CRUD checks use -- otherwise the
+            # tuple arity diverges and _group_failures explodes. Schema names are
+            # deliberately NOT substituted here: the varying token is the TENANT,
+            # and two principals blocked by the same missing tenant are one cause.
+            _prov_detail = (f"declared tenant '{_tn}' does not exist in domain "
+                            f"'{DOMAIN}' -- this principal cannot write anywhere")
+            failures.append(
+                (f"tenant '{_tn}' never provisioned [{_label}]", False)
+                + _failure_cause([f"  FAIL PROVISIONING tenant [{_label}]: "
+                                  f"{_prov_detail}"], []))
+            continue
+        runnable_sessions.append((session, role, email, _tn, _tu, _si))
 
     skipped = 0            # child entities (true needs-parent soft-skip)
     skipped_unseeded = []  # service-extension entities we could NOT verify (DISTINCT)
@@ -798,30 +1125,107 @@ def main():
         # (live LIST count >0 proves it is creatable with real data).
         seeded = is_entity_seeded(admin_session, schema_name) if kind == "service" else False
         print(f"  -- {schema_name} --")
-        for session, role, email in sessions_to_test:
+        _ro_mode = read_only_map.get(_to_snake(schema_name))
+        for session, role, email, _tn, _tu, _si in runnable_sessions:
             label = f"{role}:{email.split('@')[0]}"
+            # Address this principal at ITS OWN tenant, and give it its OWN record
+            # name: one shared name across N principals made every principal after
+            # the first collide with 409 "already exists" whenever the first one's
+            # cleanup DELETE did not land (216 of 805 failures across the stored
+            # corpus were exactly this).
+            _payload = dict(payload)
+            _payload["parent_uuid"] = _tu
+            _payload["name"] = f"{payload['name']}-s{_si}"
             passed, msgs = test_schema_crud(
-                session, schema_name, payload, label,
+                session, schema_name, _payload, label,
                 kind=kind, soft_reason=soft_reason, seeded=seeded,
                 unsatisfiable=_unsatisfiable,
-                caps=caps_by_session.get(id(session))
+                caps=caps_by_session.get(id(session)),
+                read_only_mode=_ro_mode,
+                cleanup_session=admin_session,
             )
             for m in msgs:
                 print(m)
+                _ms = m.lstrip()
+                if _ms.startswith("PASS CREATE"):
+                    if "correctly denied" in _ms:
+                        denied_ok += 1
+                    else:
+                        writes_ok += 1
+                elif _ms.startswith("PASS READONLY"):
+                    readonly_ok += 1
             if passed == "skip":
                 skipped += 1
             elif passed == "skip_unseeded":
                 skipped_unseeded.append(f"{schema_name} [{label}]")
+            elif passed == "read_only":
+                pass  # already tallied via PASS READONLY
             elif not passed:
-                failures.append(f"{schema_name} [{label}]")
+                # L-12: carry the CAUSE, not just the label. Without it the
+                # verdict block can only count assertions, which is what made a
+                # 4-cause run print 216 undifferentiated lines.
+                _op, _code, _norm, _detail = _failure_cause(msgs, _schema_names)
+                failures.append((f"{schema_name} [{label}]",
+                                 _failure_is_transient(msgs),
+                                 _op, _code, _norm, _detail))
         print()
 
+    # ── VERDICT (WRITE-LED-SUMMARY-V1, L-11) ────────────────────────────────
+    # The headline is SUCCESSFUL WRITES. A run whose every PASS was a negative
+    # assertion ("correctly denied 403") proved nothing about the write surface,
+    # and reporting "78 PASS" for it is the same degraded-paths-report-success
+    # anti-pattern this harness exists to catch. So the write count leads, and a
+    # run that wrote nothing says so FIRST.
+    _structural = [f[0] for f in failures if not f[1]]
+    _transient = [f[0] for f in failures if f[1]]
+    print()
+    print(f"  WRITES: {writes_ok} successful create(s)"
+          f"  |  {denied_ok} correctly-denied  |  {readonly_ok} read-only refusal(s) verified")
+    if writes_ok == 0:
+        print("  !! NO WRITE WAS PROVEN -- 0 successful creates in this run.")
+        print("     Every PASS above is a NEGATIVE assertion (a denial, or a")
+        print("     read-only refusal). The write surface of this app is UNVERIFIED.")
+
     if failures:
-        print(f"  x {len(failures)} test(s) FAILED:")
-        for f in failures:
-            print(f"      * {f}")
+        # FAILURE-CAUSE-AGGREGATION-V1 (L-12) — LEAD with the number of distinct
+        # CAUSES. The assertion count is still printed, but as the blast radius
+        # of those causes, not as the headline: "216 test(s) FAILED" tells the
+        # reader how big the matrix is, "4 distinct cause(s)" tells them how many
+        # things they have to go fix.
+        _groups = _group_failures(failures)
+        print(f"  x {len(_groups)} distinct failure cause(s) "
+              f"across {len(failures)} failed check(s) "
+              f"({len(_structural)} structural, {len(_transient)} transient):")
+        for _g in _groups:
+            _kind = "transient" if _g["transient"] else "structural"
+            _ops = "/".join(sorted(_g["ops"])) or "?"
+            _code = _g["code"] or _ops
+            _hdr = _code if _code == _ops else (_code + " " + _ops)
+            print(f"      * [{_kind}] {_hdr} -- {_g['count']} check(s)")
+            print(f"          {_g['detail'][:200]}")
+            _more = _g["count"] - len(_g["labels"])
+            _eg = ", ".join(_g["labels"])
+            _suffix = f" (+{_more} more)" if _more > 0 else ""
+            print(f"          e.g. {_eg}{_suffix}")
+
+    # Exit code and printed verdict come from the SAME state, in one place.
+    #   4 = catastrophic: structural failures AND not one write proven
+    #   1 = structural failures (deterministic app/schema bugs)
+    #   3 = transient-only failures (network / 429 / 5xx)
+    #   0 = healthy (possibly with unverified creates)
+    if _structural and writes_ok == 0:
+        print("  x CRUD smoke tests FAILED -- the ENTIRE write surface is broken "
+              "(0 successful creates).")
+        sys.exit(4)
+    if _structural:
+        print(f"  x CRUD smoke tests FAILED -- {len(_structural)} structural "
+              f"failure(s) (deterministic; they will not self-heal).")
         sys.exit(1)
-    elif skipped_unseeded:
+    if _transient:
+        print(f"  ! CRUD smoke tests DEGRADED -- {len(_transient)} transient "
+              f"failure(s) only (network/429/5xx); no structural failure.")
+        sys.exit(3)
+    if skipped_unseeded:
         # DISTINCT non-green status: revenue / service-extension creates could not
         # be verified for real (unseeded + unresolved contract). NOT a hard launch
         # block (no FAIL), but we must NOT print "All passed".
@@ -831,14 +1235,16 @@ def main():
             print(f"      * {s}")
         _skip_note = (f" ({skipped} child create(s) skipped -- routing+RBAC verified)"
                       if skipped else "")
-        print(f"  CRUD smoke tests passed with UNVERIFIED creates{_skip_note}")
+        print(f"  CRUD smoke tests passed with UNVERIFIED creates{_skip_note} "
+              f"-- {writes_ok} write(s) proven")
         sys.exit(0)
     else:
         _skip_note = (
             f" ({skipped} child create(s) skipped -- needs a live parent; "
             f"routing+RBAC verified)" if skipped else ""
         )
-        print(f"  All CRUD smoke tests passed{_skip_note}")
+        print(f"  All CRUD smoke tests passed{_skip_note} "
+              f"-- {writes_ok} write(s) proven")
         sys.exit(0)
 
 

@@ -1,4 +1,4 @@
-# CRUD_TESTS_TEMPLATE_VERSION: 13
+# CRUD_TESTS_TEMPLATE_VERSION: 14
 """
 crud_tests.py — CRUD smoke tests for all schemas.
 
@@ -669,7 +669,8 @@ def _policy_allows(policy, action, schema_name):
 
 def test_schema_crud(session, schema_name, payload, label,
                      kind="plain", soft_reason="", seeded=False,
-                     unsatisfiable=False, caps=None, read_only_mode=None):
+                     unsatisfiable=False, caps=None, read_only_mode=None,
+                     cleanup_session=None):
     msgs = []
     created_uuid = None
     # SUPERO_TEMPLATE_FIX_V1 — restored original template line.
@@ -904,6 +905,7 @@ def test_schema_crud(session, schema_name, payload, label,
                 r = session.delete(f"{url_base}/{created_uuid}", timeout=15)
                 if r.status_code in (200, 204):
                     msgs.append(f"  PASS DELETE {schema_name} [{label}]")
+                    created_uuid = None
                 else:
                     msgs.append(
                         f"  WARN DELETE {schema_name} [{label}]: "
@@ -911,6 +913,25 @@ def test_schema_crud(session, schema_name, payload, label,
                     )
             except Exception as e:
                 msgs.append(f"  WARN DELETE {schema_name} [{label}]: {e} (cleanup)")
+
+        # SMOKETEST-CLEANUP-V1 — a principal that may CREATE but not DELETE (a
+        # customer role, by design) left its smoketest-* row behind on every run,
+        # and these runs target whatever tenant .env points at, including live
+        # demo tenants. The WARN above is unchanged, so what the run reports about
+        # that role is unchanged; the row is then removed with the admin session.
+        # Best-effort: it adds a line, never a failure.
+        if created_uuid and cleanup_session is not None and cleanup_session is not session:
+            try:
+                r = cleanup_session.delete(f"{url_base}/{created_uuid}", timeout=15)
+                if r.status_code in (200, 204):
+                    msgs.append(f"  NOTE CLEANUP {schema_name} [{label}]: "
+                                f"test row removed with the admin session")
+                else:
+                    msgs.append(f"  NOTE CLEANUP {schema_name} [{label}]: admin delete "
+                                f"HTTP {r.status_code} -- test row {created_uuid} remains")
+            except Exception as e:
+                msgs.append(f"  NOTE CLEANUP {schema_name} [{label}]: {e} -- "
+                            f"test row {created_uuid} remains")
 
     return passed, msgs
 
@@ -998,7 +1019,7 @@ def main():
     user_sessions = []
     for u in cfg.users:
         email    = u["email"]
-        # REPLACED-BY-3.5.0: no hardcoded password fallback.
+        # REPLACED-BY-3.5.0: no hardcoded password fallback (§1.7).
 
         password = u.get("password") or getattr(cfg, "default_user_password", "")
         role     = u.get("role", "tenant_user")
@@ -1121,6 +1142,7 @@ def main():
                 unsatisfiable=_unsatisfiable,
                 caps=caps_by_session.get(id(session)),
                 read_only_mode=_ro_mode,
+                cleanup_session=admin_session,
             )
             for m in msgs:
                 print(m)

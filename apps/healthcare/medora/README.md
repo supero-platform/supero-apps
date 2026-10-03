@@ -54,7 +54,7 @@ Additional users (if any) are defined in `setup.py`.
 | Project | `medora` (set `SUPERO_PROJECT` in `.env`) |
 | Default tenant | `default-tenant` |
 | Port | `5712` |
-| SDK version | `3.6.4` (pinned in `requirements.txt`) |
+| SDK version | `3.7.1` (pinned in `requirements.txt`) |
 | Generated | `2026-06-11` |
 
 To change any of these, edit `.env` and re-run `./run.sh` or rebuild your

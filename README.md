@@ -8,7 +8,7 @@ Every app in this repo is **running live right now** — and this is the code be
 Multi-tenant, role-based, schema-driven. No npm, no build step. MIT app source, open SDK,
 your data exportable over the API — see [how this works, honestly](#how-this-works-honestly).
 
-[Live apps](https://www.supero.dev/apps) · [Quickstart](docs/quickstart.md) · [Build with Claude](docs/mcp.md) · [Platform docs](docs/)
+[Live apps](https://www.supero.dev/apps) · [Quickstart](docs/quickstart.md) · [Build with Claude](docs/mcp.md) · [Platform docs](docs/) · [Ask a question](https://github.com/supero-platform/supero-apps/discussions/categories/q-a)
 
 [![PyPI](https://img.shields.io/pypi/v/supero.svg)](https://pypi.org/project/supero/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -329,6 +329,14 @@ The [`supero` SDK](https://pypi.org/project/supero/) is MIT and open. The hosted
 
 ---
 
+## Getting help
+
+Ask in [Discussions](https://github.com/supero-platform/supero-apps/discussions). Use [Q&A](https://github.com/supero-platform/supero-apps/discussions/categories/q-a) when something
+does not work the way you expected, and [Show and tell](https://github.com/supero-platform/supero-apps/discussions/categories/show-and-tell)
+for an app you built. Answers stay public, so the next person with the same question
+finds them. Anything about your own account goes to support@supero.dev, and security
+reports go to security@supero.dev, never to a public thread.
+
 ## Contributing
 
 Issues and PRs welcome — app improvements, new verticals, doc fixes.
@@ -340,7 +348,7 @@ Built something with Supero? Open a PR and add it to the gallery.
 
 <div align="center">
 
-**[supero.dev](https://www.supero.dev)** · [Live apps](https://www.supero.dev/apps) · [Issues](https://github.com/supero-platform/supero-apps/issues)
+**[supero.dev](https://www.supero.dev)** · [Live apps](https://www.supero.dev/apps) · [Discussions](https://github.com/supero-platform/supero-apps/discussions) · [Issues](https://github.com/supero-platform/supero-apps/issues)
 
 App source in this repo is MIT licensed.
 

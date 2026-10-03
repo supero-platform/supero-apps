@@ -877,3 +877,50 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
+
+// SOURCE-BACKLINK-V1 — a link from the running app back to this app's source on
+// GitHub. It sits outside React's root, so a re-render cannot remove it. Where the
+// page shell already carries the generic "Source on GitHub" footer link, that link
+// is pointed at this app's folder and nothing is added.
+// Opt out: set `hideAttribution: true` in ui/config.js.
+(function () {
+  var SOURCE_URL = 'https://github.com/supero-platform/supero-apps/tree/main/apps/healthcare/medora';
+  function addSourceLink() {
+    if ((window.__SUPERO_CONFIG || {}).hideAttribution) return;
+    if (document.getElementById('supero-source-link')) return;
+    var shellLink = document.querySelector('#supero-attribution a[href*="github.com/supero-platform/supero-apps"]');
+    if (shellLink) { shellLink.href = SOURCE_URL; shellLink.id = 'supero-source-link'; return; }
+    var a = document.createElement('a');
+    a.id = 'supero-source-link';
+    a.href = SOURCE_URL;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.title = 'Read the code behind this app';
+    a.textContent = 'Source on GitHub';
+    a.style.cssText = [
+      'position:fixed', 'right:14px', 'bottom:14px', 'z-index:2147483647',
+      'padding:7px 14px', 'border-radius:999px', 'border:1px solid rgba(15,23,42,.12)',
+      'background:rgba(255,255,255,.94)', 'color:#475569', 'text-decoration:none',
+      'font:600 13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif',
+      'box-shadow:0 2px 8px -2px rgba(15,23,42,.18)'
+    ].join(';');
+    // The app mounts its own root at the maximum z-index after this runs, and at
+    // equal z-index the later element paints on top, so keep the link after it.
+    // Bounded, so it can never fight another script forever.
+    var moves = 0;
+    function place() {
+      // Sit above the proxy's "Built with Supero" badge when that is present.
+      if (document.getElementById('supero-demo-badge')) a.style.bottom = '54px';
+      var next = a.nextElementSibling;
+      while (next && next.id === 'supero-demo-badge') next = next.nextElementSibling;
+      if (moves < 50 && (a.parentNode !== document.body || next)) {
+        moves += 1;
+        document.body.appendChild(a);
+      }
+    }
+    place();
+    try { new MutationObserver(place).observe(document.body, { childList: true }); } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addSourceLink);
+  else addSourceLink();
+})();

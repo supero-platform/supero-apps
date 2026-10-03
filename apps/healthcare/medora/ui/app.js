@@ -502,7 +502,7 @@
                   (l.panel ? l.panel + ' · ' : '') + (l.value || '') + ' ' + (l.unit || '') +
                   (l.reference_range ? ' (ref ' + l.reference_range + ')' : '')),
                 l.collected_at && h('div', { className: 'text-xs text-slate-400 mt-1' }, 'Collected ' + myDate(l.collected_at))),
-              h(Chip, { value: l.flag || 'normal' }));
+              l.flag && h(Chip, { value: l.flag }));
           },
         }),
         tab === 'invoices' && h(SimpleList, {

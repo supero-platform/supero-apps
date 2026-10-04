@@ -195,9 +195,9 @@ WORKFLOW_DEFINITIONS = [
         ],
     },
     {
-        # EVENT-BOUND: a new participant is created -> notify the site coordinator.
+        # EVENT-BOUND: a new participant is created -> notify its authenticated creator.
         "workflow_id": "participant_enrolled", "display_name": "Participant Enrolled Notification",
-        "description": "Emails the site coordinator when a new participant is enrolled.",
+        "description": "Emails the authenticated creator when a new participant is enrolled.",
         "version": "1.0.0", "enabled": True, "status": "Active", "on_error": "continue",
         "input_schema": {"subject_id": {"type": "string", "required": False},
                          "trial_code": {"type": "string", "required": False},
@@ -231,7 +231,8 @@ WORKFLOW_DEFINITIONS = [
 
 EVENT_BINDINGS = [
     {"event": "@create:trialcore:participant", "workflow_id": "participant_enrolled",
-     "input_map": {"subject_id": "subject_id", "trial_code": "trial_code", "site_name": "site_name"}},
+     "input_map": {"subject_id": "subject_id", "trial_code": "trial_code", "site_name": "site_name",
+                   "coordinator_email": "user.email"}},
 ]
 
 

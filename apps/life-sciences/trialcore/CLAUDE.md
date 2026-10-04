@@ -40,6 +40,17 @@ hides the platform's default shell with `#root,#app{display:none!important}` and
   filter_field=..., hidden_fields=[...])`, enforced **server-side**. Row scoping and field
   hiding happen on the platform, not in this UI — don't reimplement them client-side.
 
+## Participant enrollment notifications
+
+The participant-create event binds `coordinator_email` to the authenticated
+creator's `user.email`. The creator receives the notification, including when an
+administrator creates the record; this is not a lookup of a separate site contact.
+Keep recipients tied to verified identity rather than free-text record fields.
+
+`python tests/test_notification_binding.py` checks the recipient binding and that
+every input referenced by the notification steps is supplied. It does not run
+setup or send email.
+
 ## Commands
 
 ```bash

@@ -1,5 +1,7 @@
 # Lumen Health
 
+![Lumen Health](docs/screenshot.png)
+
 > Multi-specialty clinic platform — book care online, e-sign consent, and keep clinical notes provider-only.
 > **Live:** [lumen.supero.live](https://lumen.supero.live) · **Industry:** healthcare
 

@@ -25,6 +25,12 @@ Thanks for being here. Issues and PRs are welcome.
 - **Use placeholders in docs** — `your-domain`, `you@example.com`. Never a real domain.
 - **Claims must be true.** If a README says a thing works, it works. We'd rather ship a
   short honest README than a long aspirational one.
+- **Messages go only to a verified identity.** The demo sign-in details are published, so
+  any email address or phone number stored on a record is something a stranger could have
+  typed. Send only to the signed-in user (`user.email` in an event binding) or to the
+  account that owns the record (`owner_username`). Never map a recipient from a free-text
+  field, and never send SMS from an event binding: there is no verified phone number.
+  Commit `340bee5` closed this across the repo; a change that reopens it will not be merged.
 
 ## Reporting bugs
 

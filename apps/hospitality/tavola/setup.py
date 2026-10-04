@@ -232,12 +232,11 @@ EVENT_BINDINGS = [
     {"event": "@create:tavola:order", "workflow_id": "order_confirmation",
      "input_map": {"customer_email": "user.email",
                    "customer_name": "customer_name", "order_number": "order_number",
-                   "restaurant_name": "restaurant_name", "total": "total",
-                   "customer_phone": "customer_phone"}},
+                   "restaurant_name": "restaurant_name", "total": "total"}},
     {"event": "@create:tavola:reservation", "workflow_id": "reservation_confirmation",
      "input_map": {"customer_email": "user.email", "customer_name": "customer_name",
                    "restaurant_name": "restaurant_name", "party_size": "party_size",
-                   "start_time": "start_time", "customer_phone": "customer_phone"}},
+                   "start_time": "start_time"}},
 ]
 
 

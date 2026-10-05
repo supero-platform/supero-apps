@@ -344,6 +344,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Built something with Supero? Open a PR and add it to the gallery.
 
+**Want to build a new app from scratch?** [supero-mcp](https://github.com/supero-platform/supero-mcp)
+has a step-by-step guide to building one from your AI assistant over MCP, 26 project briefs to
+pick from, and community apps you can improve. The free plan covers three projects.
+
 ## Contributors
 
 Thank you to the people who have improved these apps:

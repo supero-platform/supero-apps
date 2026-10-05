@@ -344,6 +344,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Built something with Supero? Open a PR and add it to the gallery.
 
+## Contributors
+
+Thank you to the people who have improved these apps:
+
+- [@bhavesh1309](https://github.com/bhavesh1309) added the first app screenshot, for Lumen Health ([#28](https://github.com/supero-platform/supero-apps/pull/28)).
+- [@kkinsen0314-alt](https://github.com/kkinsen0314-alt) fixed TrialCore's enrolment email, which had no recipient, and added a test for it ([#29](https://github.com/supero-platform/supero-apps/pull/29)).
+
+Want your name here? The [open issues](https://github.com/supero-platform/supero-apps/issues) say what needs doing, and several are marked `good first issue`.
+
 ---
 
 <div align="center">

@@ -30,7 +30,7 @@ Thanks for being here. Issues and PRs are welcome.
   typed. Send only to the signed-in user (`user.email` in an event binding) or to the
   account that owns the record (`owner_username`). Never map a recipient from a free-text
   field, and never send SMS from an event binding: there is no verified phone number.
-  Commit `340bee5` closed this across the repo; a change that reopens it will not be merged.
+  Commit `ce6fe48` closed this across the repo; a change that reopens it will not be merged.
 
 ## Reporting bugs
 

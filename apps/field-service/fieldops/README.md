@@ -1,5 +1,7 @@
 # FieldOps
 
+![FieldOps](docs/screenshot.png)
+
 > Scheduling, dispatch and invoicing for the trades.
 > **Live:** [fieldops.supero.live](https://fieldops.supero.live) · **Industry:** field-service
 

@@ -577,25 +577,94 @@
     }
     function publish(p) {
       var reach = 8000 + Math.floor(Math.random() * 60000), clicks = Math.floor(reach * (0.02 + Math.random() * 0.04)), eng = Math.floor(reach * (0.04 + Math.random() * 0.08)), likes = Math.floor(eng * (0.6 + Math.random() * 0.3));
-      // Mark published + record whether it REALLY posted, then best-effort run the notify saga.
+      // Mark published/failed + record whether it REALLY posted, then best-effort run the notify saga on success.
       function done(delivery, providerId, err) {
-        var data = { post_state: 'published', published_at: new Date().toISOString(), reach: reach, clicks: clicks, engagement: eng, likes: likes, delivery: delivery, provider_post_id: providerId || '', publish_error: err || '' };
+        var isFailed = delivery === 'failed';
+        var data = {
+          post_state: isFailed ? 'failed' : 'published',
+          published_at: isFailed ? (p.published_at || null) : new Date().toISOString(),
+          reach: isFailed ? 0 : reach,
+          clicks: isFailed ? 0 : clicks,
+          engagement: isFailed ? 0 : eng,
+          likes: isFailed ? 0 : likes,
+          delivery: delivery,
+          provider_post_id: providerId || '',
+          publish_error: err || ''
+        };
         client.updateObject('post', p.uuid, data, p).then(function () {
-          if (services && services.workflow && services.workflow.run) { runSaga('post_publish', { post_uuid: p.uuid, owner_email: (client.userInfo || {}).email, platform: p.platform, campaign_name: p.campaign_name, reach: reach, clicks: clicks, engagement: eng, likes: likes }).catch(function () {}); }
-          showToast(delivery === 'live' ? ('Posted to ' + p.platform + ' for real ✓') : ('Published (simulated — connect ' + p.platform + ' to post live) 🚀'), delivery === 'live' ? 'success' : 'info');
+          if (!isFailed && services && services.workflow && services.workflow.run) {
+            runSaga('post_publish', { post_uuid: p.uuid, owner_email: (client.userInfo || {}).email, platform: p.platform, campaign_name: p.campaign_name, reach: reach, clicks: clicks, engagement: eng, likes: likes }).catch(function () {});
+          }
+          if (delivery === 'live') {
+            showToast('Posted to ' + p.platform + ' for real ✓', 'success');
+          } else if (delivery === 'failed') {
+            showToast('Failed to post to ' + p.platform + (err ? (': ' + err) : ''), 'error');
+          } else {
+            showToast('Published (simulated — connect ' + p.platform + ' to post live) 🚀', 'info');
+          }
           c.reload();
         }).catch(function (e) { showToast('Failed: ' + ((e && e.message) || ''), 'error'); });
       }
-      // 1) Attempt the real post; ANY error / missing integration → graceful simulated fallback.
+      function isNotConfigured(err) {
+        if (!err) return false;
+        var msg = '';
+        if (typeof err === 'string') msg = err;
+        else if (err.message) msg = err.message;
+        else if (err.error) msg = typeof err.error === 'string' ? err.error : (err.error.message || '');
+        else if (err.data) msg = typeof err.data === 'string' ? err.data : (err.data.error || err.data.message || '');
+        var status = err.status || (err.data && err.data.status);
+        if (status === 503 || status === 'not_configured' || status === 'unconfigured') return true;
+        var lower = String(msg).toLowerCase();
+        return lower.indexOf('not configured') >= 0 ||
+               lower.indexOf('not connected') >= 0 ||
+               lower.indexOf('no credentials') >= 0 ||
+               lower.indexOf('no api key') >= 0 ||
+               lower.indexOf('missing credentials') >= 0 ||
+               lower.indexOf('missing api key') >= 0 ||
+               lower.indexOf('unconfigured') >= 0 ||
+               lower.indexOf('service unavailable') >= 0;
+      }
+      // Check whether this channel is connected before calling realPost
+      var matchingChannel = (c.channels || []).find(function (ch) { return ch.platform === p.platform; });
+      var isConnected = matchingChannel ? (matchingChannel.channel_state === 'connected') : false;
+      if (Array.isArray(c.channels) && !isConnected) {
+        done('simulated', '', 'channel not connected');
+        return;
+      }
+      // 1) Attempt the real post; rejected/error -> record 'failed'; unconnected/unconfigured -> 'simulated'.
       var attempt;
-      try { attempt = realPost(p); } catch (e) { done('simulated', '', (e && e.message) || 'could not post'); return; }
-      if (!attempt) { done('simulated', '', ''); return; }
+      try {
+        attempt = realPost(p);
+      } catch (e) {
+        if (isNotConfigured(e)) {
+          done('simulated', '', (e && e.message) || 'channel not connected');
+        } else {
+          done('failed', '', (e && e.message) || 'could not post');
+        }
+        return;
+      }
+      if (!attempt) {
+        done('simulated', '', '');
+        return;
+      }
       Promise.resolve(attempt).then(function (res) {
         var id = res && (res.id || res.provider_post_id || res.post_id || (res.data && res.data.id));
-        var ok = res && (id || res.ok === true || res.success === true || res.status === 'published' || res.status === 'success' || res.status === 'ok');
-        if (ok) done('live', id || '', '');
-        else done('simulated', '', (res && (res.error || res.message)) || 'no confirmation from provider');
-      }).catch(function (e) { done('simulated', '', (e && e.message) || 'channel not connected'); });
+        var rejected = res && (res.success === false || res.ok === false || res.status === 'error' || res.status === 'failed' || Boolean(res.error));
+        var ok = !rejected && res && (id || res.ok === true || res.success === true || res.status === 'published' || res.status === 'success' || res.status === 'ok');
+        if (ok) {
+          done('live', id || '', '');
+        } else if (isNotConfigured(res)) {
+          done('simulated', '', (res && (res.error || res.message || (res.data && (res.data.error || res.data.message)))) || 'channel not configured');
+        } else {
+          done('failed', '', (res && (res.error || res.message || (res.data && (res.data.error || res.data.message)))) || 'no confirmation from provider');
+        }
+      }).catch(function (e) {
+        if (isNotConfigured(e)) {
+          done('simulated', '', (e && e.message) || 'channel not configured');
+        } else {
+          done('failed', '', (e && e.message) || 'channel error');
+        }
+      });
     }
     function schedule(p) { client.updateObject('post', p.uuid, { post_state: 'scheduled', scheduled_at: p.scheduled_at || new Date(Date.now() + 86400000).toISOString() }, p).then(function () { showToast('Scheduled', 'success'); c.reload(); }).catch(function () { showToast('Failed', 'error'); }); }
     return h('div', null,
@@ -608,14 +677,26 @@
           h('div', { className: 'ap-pcard-img' }, h('img', { src: imgUrl(p.image), alt: '', onError: function (e) { e.target.style.visibility = 'hidden'; } }),
             h('div', { className: 'ap-pcard-plat' }, h(PlatChip, { plat: p.platform }))),
           h('div', { className: 'ap-pcard-b' },
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' } }, h(Badge, { s: p.post_state }), p.campaign_name ? h('span', { className: 'ap-mut', style: { fontSize: '11.5px' } }, p.campaign_name) : null, (p.post_state === 'published' && p.delivery) ? h('span', { style: { marginLeft: 'auto', fontSize: '11px', fontWeight: 600, color: p.delivery === 'live' ? '#16a34a' : '#9ca3af' }, title: p.publish_error || '' }, p.delivery === 'live' ? '● Live' : '● Simulated') : null),
+            h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' } },
+              h(Badge, { s: p.post_state }),
+              p.campaign_name ? h('span', { className: 'ap-mut', style: { fontSize: '11.5px' } }, p.campaign_name) : null,
+              p.delivery ? h('span', {
+                style: {
+                  marginLeft: 'auto',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: p.delivery === 'live' ? '#16a34a' : (p.delivery === 'failed' ? '#dc2626' : '#9ca3af')
+                },
+                title: p.publish_error || ''
+              }, p.delivery === 'live' ? '● Live' : (p.delivery === 'failed' ? '● Failed' : '● Simulated')) : null),
             h('div', { style: { fontSize: '13.5px', lineHeight: 1.5, flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } }, p.caption || p.display_name),
             p.post_state === 'published' ? h('div', { className: 'ap-metrics' },
               h('div', { className: 'ap-metric' }, h('div', { className: 'mn num' }, k(p.reach)), h('div', { className: 'ml' }, 'reach')),
               h('div', { className: 'ap-metric' }, h('div', { className: 'mn num' }, k(p.clicks)), h('div', { className: 'ml' }, 'clicks')),
               h('div', { className: 'ap-metric' }, h('div', { className: 'mn num' }, k(p.engagement)), h('div', { className: 'ml' }, 'eng')),
               h('div', { className: 'ap-metric' }, h('div', { className: 'mn num' }, k(p.likes)), h('div', { className: 'ml' }, 'likes')))
-              : h('div', { className: 'ap-mut', style: { marginTop: '10px', fontSize: '12px' } }, p.scheduled_at ? '📅 ' + fmtDT(p.scheduled_at) : 'Not scheduled'),
+              : h('div', { className: 'ap-mut', style: { marginTop: '10px', fontSize: '12px', color: p.post_state === 'failed' ? '#dc2626' : undefined } },
+                  p.post_state === 'failed' ? ('⚠️ ' + (p.publish_error || 'Delivery failed')) : (p.scheduled_at ? '📅 ' + fmtDT(p.scheduled_at) : 'Not scheduled')),
             h('div', { style: { display: 'flex', gap: '8px', marginTop: '12px' } },
               p.post_state === 'scheduled' ? h('button', { className: 'ap-btn ap-btn-grad ap-btn-sm', onClick: function () { publish(p); } }, '🚀 Publish now') : null,
               p.post_state === 'draft' ? h('button', { className: 'ap-btn ap-btn-purple ap-btn-sm', onClick: function () { schedule(p); } }, 'Schedule') : null,

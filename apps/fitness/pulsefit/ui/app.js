@@ -29,6 +29,80 @@
   function imgUrl(x) { try { return resolveImageUrl(x) || ''; } catch (e) { return ''; } }
   function bySort(a, b) { return (a.sort_order || 0) - (b.sort_order || 0); }
   function dayOf(dt) { var d = (dt || '').split('·')[0].trim(); return d.slice(0, 3); }
+
+  var DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function classDayDiff(dt) {
+    if (!dt) return null;
+    var dayStr = dayOf(dt);
+    var idx = DAYS_OF_WEEK.indexOf(dayStr);
+    if (idx === -1) return null;
+    var today = new Date().getDay();
+    return (idx - today + 7) % 7;
+  }
+  function isTomorrow(dt) {
+    return classDayDiff(dt) === 1;
+  }
+
+  function runSaga(workflowId, input) {
+    if (!(services && services.workflow && services.workflow.run)) {
+      return Promise.reject(new Error('workflow service unavailable'));
+    }
+    return Promise.resolve(services.workflow.run(workflowId, input)).then(function (res) {
+      var r = res || {};
+      var out = (r.output && typeof r.output === 'object') ? r.output : {};
+      if (r.success === false || r.error || out.error) {
+        throw new Error(String(r.error || out.error || (workflowId + ' failed')));
+      }
+      var st = out.status || '';
+      if (st && st !== 'completed') throw new Error(out.error_message || (workflowId + ' ' + st));
+      if (Number(out.steps_failed) > 0) {
+        throw new Error(out.error_message || (out.steps_failed + ' step(s) failed in ' + workflowId));
+      }
+      return res;
+    });
+  }
+
+  function sendClassReminder(cl, onDone) {
+    if (!services || !services.workflow || !services.workflow.run) {
+      showToast('Workflow service unavailable — reminder not recorded.', 'error');
+      return Promise.resolve(0);
+    }
+    return client.getObjects('class_booking').then(function (res) {
+      var all = arr(res);
+      var confirmed = all.filter(function (b) {
+        return b.booking_state === 'booked' &&
+          b.class_name === cl.class_name &&
+          (!cl.day_time || b.day_time === cl.day_time) &&
+          (!cl.club_name || !b.club_name || b.club_name === cl.club_name);
+      });
+      if (!confirmed.length) {
+        showToast('No confirmed bookings for ' + cl.class_name, 'info');
+        return 0;
+      }
+      var promises = confirmed.map(function (b) {
+        // Customer email step is omitted pending platform-side binding resolution.
+        return runSaga('class_reminder', {
+          booking_uuid: b.uuid,
+          class_name: cl.class_name,
+          day_time: cl.day_time
+        });
+      });
+      return Promise.all(promises).then(function () {
+        showToast('Queued ' + confirmed.length + ' reminder' + (confirmed.length === 1 ? '' : 's') + ' for ' + cl.class_name + ' ✓', 'success');
+        onDone && onDone();
+        return confirmed.length;
+      });
+    }).catch(function (err) {
+      showToast('Reminder failed: ' + ((err && err.message) || 'error'), 'error');
+      throw err;
+    });
+  }
+
+  if (typeof window !== 'undefined') {
+    window._sendClassReminder = sendClassReminder;
+    window._classDayDiff = classDayDiff;
+    window._isTomorrow = isTomorrow;
+  }
   function statusColor(s) {
     return { booked: '#84cc16', attended: '#22c55e', waitlist: '#f59e0b', cancelled: '#71717a',
       active: '#84cc16', frozen: '#38bdf8', High: '#ef4444', Medium: '#f59e0b', Low: '#22c55e' }[s] || '#84cc16';
@@ -515,7 +589,9 @@
           h('div', { style: { marginTop: '12px' } }, shownClasses.slice(0, 6).map(function (cl) {
             return h('div', { key: cl.uuid, className: 'pf-row', style: { padding: '11px 0' } },
               h('div', { className: 'pf-grow' }, h('div', { style: { fontWeight: 700, fontSize: '14px' } }, cl.class_name), h('div', { className: 'pf-mut' }, cl.day_time + ' · ' + (cl.trainer_name || ''))),
-              h('span', { className: 'pf-badge', style: { background: statusColor(cl.intensity) } }, cl.intensity));
+              h('span', { className: 'pf-badge', style: { background: statusColor(cl.intensity) } }, cl.intensity),
+              isTomorrow(cl.day_time) ? h('span', { className: 'pf-badge', style: { background: 'transparent', border: '1px solid var(--lime)', color: 'var(--lime)', marginLeft: '6px' } }, 'Tomorrow') : null,
+              h('button', { className: 'pf-btn pf-btn-lime pf-btn-sm', style: { marginLeft: '8px' }, onClick: function () { sendClassReminder(cl); } }, 'Send reminder'));
           })))));
   }
 
@@ -575,6 +651,8 @@
         return h('div', { key: cl.uuid, className: 'pf-row' },
           h('div', { style: { width: '46px', height: '46px', borderRadius: '10px', overflow: 'hidden', flex: 'none', background: 'var(--card2)' } }, h('img', { src: imgUrl(cl.image), alt: '', style: { width: '100%', height: '100%', objectFit: 'cover' }, onError: function (e) { e.target.style.visibility = 'hidden'; } })),
           h('div', { className: 'pf-grow' }, h('div', { style: { fontWeight: 700 } }, cl.class_name), h('div', { className: 'pf-mut' }, cl.category + ' · ' + cl.day_time + ' · ' + (cl.club_name || '') + ' · ' + (cl.spots_left || 0) + '/' + (cl.capacity || 0) + ' open')),
+          isTomorrow(cl.day_time) ? h('span', { className: 'pf-badge', style: { background: 'transparent', border: '1px solid var(--lime)', color: 'var(--lime)' } }, 'Tomorrow') : null,
+          h('button', { className: 'pf-btn pf-btn-lime pf-btn-sm', onClick: function () { sendClassReminder(cl); } }, 'Send reminder'),
           h('button', { className: 'pf-btn pf-btn-ghost pf-btn-sm', onClick: function () { setEdit(cl); } }, 'Edit'),
           h('button', { className: 'pf-btn pf-btn-ghost pf-btn-sm', onClick: function () { del(cl); } }, '✕'));
       })),

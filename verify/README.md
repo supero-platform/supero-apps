@@ -7,15 +7,24 @@ against the live demo, without signing up for anything.
 git clone https://github.com/supero-platform/supero-apps
 cd supero-apps/verify
 
+# Run against Sentinel (default):
 ./01-policy.sh            # what the server says each account is
 ./02-rbac-enforcement.sh  # field-level access: same record, two roles
 ./03-tenant-isolation.sh  # one insurer cannot read the other's book
+
+# Or run against Medora:
+./01-policy.sh medora
+./02-rbac-enforcement.sh medora
+./03-tenant-isolation.sh medora
+# (or set SUPERO_VERIFY_PROJECT=medora)
 ```
 
 Needs `curl` and `python3`. Nothing else, no account, no API key.
 
-They run against [sentinel.supero.live](https://sentinel.supero.live) using the demo
+By default, they run against [sentinel.supero.live](https://sentinel.supero.live) using the demo
 logins published in [`apps/insurance/sentinel/README.md`](../apps/insurance/sentinel/README.md).
+When passed `medora` (or `SUPERO_VERIFY_PROJECT=medora`), they run against [medora.supero.live](https://medora.supero.live)
+using the demo logins published in [`apps/healthcare/medora/README.md`](../apps/healthcare/medora/README.md).
 Those passwords are public on purpose.
 
 ---

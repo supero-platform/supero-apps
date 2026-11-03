@@ -112,15 +112,15 @@ Docker container.
 
 ## Prerequisites
 
+You do not need a Supero account — `run.sh` registers the domain you name in `.env`.
+
 Pick one of:
 
 **For Python workflow:**
 - Python 3.9+
-- A Supero account — [get one at supero.dev](https://supero.dev)
 
 **For Docker workflow:**
 - Docker 20.10+ with Docker Compose v2
-- A Supero account
 
 **Always required:**
 - A modern browser (Chrome, Firefox, Safari, Edge)

@@ -15,9 +15,50 @@ set -euo pipefail
 
 API="${SUPERO_API:-https://api.supero.dev}"
 DOMAIN="${SUPERO_VERIFY_DOMAIN:-supero-apps}"
-PROJECT="${SUPERO_VERIFY_PROJECT:-sentinel}"
+PROJECT="${SUPERO_VERIFY_PROJECT:-${1:-sentinel}}"
 UA='supero-verify/1.0'
 DEMO_PASSWORD="${SUPERO_DEMO_PASSWORD:-Password123!}"
+
+case "$PROJECT" in
+  sentinel)
+    APP_NAME="Sentinel"
+    ENTITY_TYPE="claim"
+    ENTITY_KEY="claim"
+    ENTITY_LABEL="claim"
+    HIDDEN_FIELDS=("fraud_score" "internal_notes")
+    ADMIN_ACCOUNT="claims@sentinel.insure"
+    MEMBER_ACCOUNT="member@sentinel.insure"
+    TENANT2_ACCOUNT="claims@cascade.insure"
+    ADMIN_LABEL="Northwind Mutual · claims team"
+    MEMBER_LABEL="Northwind Mutual · policyholder"
+    TENANT2_LABEL="Cascade Assurance · claims team"
+    TENANT1_NAME="Northwind Mutual"
+    TENANT2_NAME="Cascade Assurance"
+    ID_FIELD="claim_number"
+    ID_PREFIX="CLM-"
+    ;;
+  medora)
+    APP_NAME="Medora"
+    ENTITY_TYPE="medorahealth:lab_result"
+    ENTITY_KEY="lab_result"
+    ENTITY_LABEL="lab result"
+    HIDDEN_FIELDS=("flag")
+    ADMIN_ACCOUNT="drchen@mercy-general.medora.health"
+    MEMBER_ACCOUNT="maria@example.com"
+    TENANT2_ACCOUNT="frontdesk@lakeside-clinic.medora.health"
+    ADMIN_LABEL="Mercy General · site doctor"
+    MEMBER_LABEL="Mercy General · patient"
+    TENANT2_LABEL="Lakeside Clinic · staff"
+    TENANT1_NAME="Mercy General"
+    TENANT2_NAME="Lakeside Clinic"
+    ID_FIELD="name"
+    ID_PREFIX="lab-"
+    ;;
+  *)
+    echo "Unknown project: '$PROJECT'. Supported projects: sentinel, medora" >&2
+    exit 2
+    ;;
+esac
 
 # Colours, disabled when not a terminal or when NO_COLOR is set.
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then

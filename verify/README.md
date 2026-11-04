@@ -24,7 +24,7 @@ Needs `curl` and `python3`. Nothing else, no account, no API key.
 By default, they run against [sentinel.supero.live](https://sentinel.supero.live) using the demo
 logins published in [`apps/insurance/sentinel/README.md`](../apps/insurance/sentinel/README.md).
 When passed `medora` (or `SUPERO_VERIFY_PROJECT=medora`), they run against [medora.supero.live](https://medora.supero.live)
-using the demo logins published in [`apps/healthcare/medora/README.md`](../apps/healthcare/medora/README.md).
+using the demo logins listed on its sign-in page and in [`apps/healthcare/medora/config.py`](../apps/healthcare/medora/config.py).
 Those passwords are public on purpose.
 
 ---

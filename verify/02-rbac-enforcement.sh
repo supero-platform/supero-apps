@@ -15,6 +15,7 @@
 #                  hidden_fields=["fraud_score", "internal_notes"])
 #   Medora:
 #       PolicyRule(entity="lab_result", can_read=True,
+#                  filter_field="owner_username", filter_match="$user.name",
 #                  hidden_fields=["flag"])
 #
 #   The admin/staff team has no such restriction. So on the SAME record, the staff

@@ -1,5 +1,7 @@
 # Sentinel
 
+![Sentinel](docs/screenshot.png)
+
 > Enterprise insurance policy & claims management — quote and bind coverage, file and adjudicate claims, with insurer-internal fraud scoring kept off the policyholder portal.
 > **Live:** [sentinel.supero.live](https://sentinel.supero.live) · **Industry:** insurance
 

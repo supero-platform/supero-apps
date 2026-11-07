@@ -196,15 +196,12 @@ WORKFLOW_DEFINITIONS = [
         ],
     },
     {
-        # Saga: flips the booking to a reminded marker (booking_state) before notifying,
-        # and reverts it if reminders fail — copy of ledgerline's compensate shape.
+        # Saga: flips the booking to a reminded marker (booking_state).
+        # Member email step is omitted pending platform-side binding resolution.
         "workflow_id": "class_reminder", "display_name": "Class Reminder",
-        "description": "Confirms attendance and emails + texts the member a reminder (saga — reverts the state change if notifications fail).",
+        "description": "Records member class reminder state (saga).",
         "version": "1.0.0", "enabled": True, "status": "Active", "on_error": "compensate",
         "input_schema": {"booking_uuid": {"type": "string", "required": True},
-                         "member_email": {"type": "string", "required": False},
-                         "member_phone": {"type": "string", "required": False},
-                         "member_name": {"type": "string", "required": False},
                          "class_name": {"type": "string", "required": False},
                          "day_time": {"type": "string", "required": False}},
         "steps": [
@@ -212,14 +209,7 @@ WORKFLOW_DEFINITIONS = [
              "record_uuid": "{{input.booking_uuid}}", "data": {"booking_state": "booked"},
              "compensate": {"kind": "automatic", "type": "crud_operation", "operation": "update",
                             "object_type": "pulsefit:class_booking", "record_uuid": "{{input.booking_uuid}}",
-                            "data": {"booking_state": "waitlist"}}},
-            {"id": "email", "type": "service_call", "service": "email", "operation": "send_email", "on_error": "continue",
-             "input_map": {"to_email": "{{input.member_email}}",
-                           "subject": "Reminder: {{input.class_name}} is coming up",
-                           "body_html": "<p>Hey {{input.member_name}}, don't forget — {{input.class_name}} is on {{input.day_time}}. Fuel up and bring the energy. — PulseFit</p>"}},
-            {"id": "sms", "type": "service_call", "service": "sms", "operation": "send_sms", "on_error": "continue",
-             "input_map": {"to": "{{input.member_phone}}",
-                           "body": "PulseFit reminder: {{input.class_name}} is on {{input.day_time}}. Let's go!"}},
+                            "data": {"booking_state": "booked"}}},
         ],
     },
 ]

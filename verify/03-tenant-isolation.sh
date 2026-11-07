@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # 03 — Tenant isolation, checked against the live demo.
 #
+# Supports Sentinel (default) and Medora:
+#   ./03-tenant-isolation.sh           # runs Sentinel
+#   ./03-tenant-isolation.sh medora    # runs Medora
+# Or set SUPERO_VERIFY_PROJECT=medora
+#
 # THE CLAIM
-#   sentinel runs two insurers on ONE deployment: Northwind Mutual and Cascade
-#   Assurance (apps/insurance/sentinel/config.py). Each has its own claims team.
-#   A staff account signed into one insurer must not be able to read the other's
-#   claims — not through the list endpoint, and not by addressing a record
-#   directly by UUID with a perfectly valid token.
+#   Sentinel runs two insurers on ONE deployment: Northwind Mutual and Cascade
+#   Assurance (apps/insurance/sentinel/config.py). Medora runs multiple hospitals
+#   and clinics: Mercy General and Lakeside Clinic (apps/healthcare/medora/config.py).
+#   Each has its own staff. A staff account signed into one tenant must not be
+#   able to read the other's records — not through the list endpoint, and not by
+#   addressing a record directly by UUID with a perfectly valid token.
 #
 #   Tenancy is the record's address, not a column someone remembered to filter on.
 #   This script tests the second, harder case: fetching a known-good UUID from the
@@ -18,37 +24,38 @@
 
 set -euo pipefail
 cd "$(dirname "$0")"
-. ./_lib.sh
+. ./_lib.sh "$@"
 need curl; need python3
 
 head1 "03 · Tenant isolation"
-dim   "Northwind Mutual and Cascade Assurance — one deployment, two books"
+dim   "$TENANT1_NAME and $TENANT2_NAME — one deployment, two books"
 
-NORTHWIND=$(login "claims@sentinel.insure")
-CASCADE=$(login "claims@cascade.insure")
+TENANT1_TOK=$(login "$ADMIN_ACCOUNT")
+TENANT2_TOK=$(login "$TENANT2_ACCOUNT")
 
-n_body=$(body_of "$(api_get "$NORTHWIND" "/api/v1/crud/$DOMAIN/claim?limit=50")")
-c_body=$(body_of "$(api_get "$CASCADE"   "/api/v1/crud/$DOMAIN/claim?limit=50")")
+t1_body=$(body_of "$(api_get "$TENANT1_TOK" "/api/v1/crud/$DOMAIN/$ENTITY_TYPE?limit=50")")
+t2_body=$(body_of "$(api_get "$TENANT2_TOK" "/api/v1/crud/$DOMAIN/$ENTITY_TYPE?limit=50")")
 
-# Pick a seeded Northwind claim to address directly as Cascade.
-TARGET=$(python3 - "$n_body" <<'PY'
+# Pick a seeded Tenant 1 record to address directly as Tenant 2.
+TARGET=$(python3 - "$t1_body" "$ID_FIELD" "$ID_PREFIX" "$ENTITY_LABEL" <<'PY'
 import json, sys
-rows = json.loads(sys.argv[1]).get('results') or []
+body_json, id_field, id_prefix, entity_label = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+rows = json.loads(body_json).get('results') or []
 seeded = [r for r in rows
-          if str(r.get('claim_number', '')).startswith('CLM-') and r.get('uuid')]
+          if str(r.get(id_field, '')).startswith(id_prefix) and r.get('uuid')]
 if not seeded:
     sys.exit(1)
-print(f"{seeded[0]['uuid']} {seeded[0]['claim_number']}")
+print(f"{seeded[0]['uuid']} {seeded[0][id_field]}")
 PY
-) || vacuous "Northwind's book has no seeded claim with a UUID — nothing to attempt."
+) || vacuous "$TENANT1_NAME's book has no seeded $ENTITY_LABEL with a UUID — nothing to attempt."
 
 TARGET_UUID=${TARGET%% *}
 TARGET_NUM=${TARGET##* }
 
-say "  target: Northwind claim $TARGET_NUM"
-say "  fetching it with a valid Cascade staff token, directly by UUID"
+say "  target: $TENANT1_NAME $ENTITY_LABEL $TARGET_NUM"
+say "  fetching it with a valid $TENANT2_NAME staff token, directly by UUID"
 
-resp=$(api_get "$CASCADE" "/api/v1/crud/$DOMAIN/claim/$TARGET_UUID")
+resp=$(api_get "$TENANT2_TOK" "/api/v1/crud/$DOMAIN/$ENTITY_TYPE/$TARGET_UUID")
 code=$(status_of "$resp")
 body=$(body_of "$resp")
 
@@ -63,28 +70,30 @@ else
 fi
 
 # The list endpoints should also be disjoint on seeded data.
-python3 - "$n_body" "$c_body" <<'PY'
+python3 - "$t1_body" "$t2_body" "$ID_FIELD" "$ID_PREFIX" "$TENANT1_NAME" "$TENANT2_NAME" "$ENTITY_LABEL" <<'PY'
 import json, sys
-n = json.loads(sys.argv[1]).get('results') or []
-c = json.loads(sys.argv[2]).get('results') or []
+t1 = json.loads(sys.argv[1]).get('results') or []
+t2 = json.loads(sys.argv[2]).get('results') or []
+id_field, id_prefix = sys.argv[3], sys.argv[4]
+t1_name, t2_name, entity_label = sys.argv[5], sys.argv[6], sys.argv[7]
 
 def seeded(rows):
-    return {r.get('claim_number') for r in rows
-            if str(r.get('claim_number', '')).startswith('CLM-')}
+    return {r.get(id_field) for r in rows
+            if str(r.get(id_field, '')).startswith(id_prefix)}
 
-ns, cs = seeded(n), seeded(c)
-overlap = ns & cs
-print(f"  Northwind sees {len(ns)} seeded claims, Cascade sees {len(cs)}")
+s1, s2 = seeded(t1), seeded(t2)
+overlap = s1 & s2
+print(f"  {t1_name} sees {len(s1)} seeded {entity_label}(s), {t2_name} sees {len(s2)}")
 if overlap:
-    print(f"  FAIL  {len(overlap)} seeded claim(s) visible to BOTH: {sorted(overlap)[:4]}")
+    print(f"  FAIL  {len(overlap)} seeded {entity_label}(s) visible to BOTH: {sorted(overlap)[:4]}")
     sys.exit(1)
 print("  PASS  the two seeded books are disjoint")
 
 # Untenanted rows, if any, are called out rather than silently ignored: they are
 # demo-data noise, not an isolation failure, and saying so is more honest than
 # filtering them out quietly.
-loose = [r.get('claim_number') for r in n
-         if not str(r.get('claim_number', '')).startswith('CLM-')
+loose = [r.get(id_field) for r in t1
+         if not str(r.get(id_field, '')).startswith(id_prefix)
          and r.get('owner_username') is None]
 if loose:
     print(f"  NOTE  {len(loose)} untenanted test record(s) exist in this demo domain")

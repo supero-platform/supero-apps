@@ -1,5 +1,7 @@
 # TrialCore
 
+![TrialCore](docs/screenshot.png)
+
 > Enterprise multi-site clinical trial management — run every trial, every site, in one place.
 > **Live:** [trialcore.supero.live](https://trialcore.supero.live) · **Industry:** life-sciences
 

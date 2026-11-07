@@ -5,21 +5,26 @@
 # issues for a session, and what each demo account can actually read. Scripts 02
 # and 03 assert; this one just shows you the board.
 #
-# Nothing here is privileged. Every account used is published in
-# apps/insurance/sentinel/README.md so that anyone can reproduce this.
+# Supports Sentinel (default) and Medora:
+#   ./01-policy.sh           # runs Sentinel
+#   ./01-policy.sh medora    # runs Medora
+# Or set SUPERO_VERIFY_PROJECT=medora
+#
+# Nothing here is privileged. Every account used is published in the app READMEs
+# so that anyone can reproduce this.
 
 set -euo pipefail
 cd "$(dirname "$0")"
-. ./_lib.sh
+. ./_lib.sh "$@"
 need curl; need python3
 
 head1 "01 · Who the server thinks you are"
-dim   "domain=$DOMAIN  project=$PROJECT  api=$API"
+dim   "app=$APP_NAME  domain=$DOMAIN  project=$PROJECT  api=$API"
 
 for account in \
-  "claims@sentinel.insure|Northwind Mutual · claims team" \
-  "member@sentinel.insure|Northwind Mutual · policyholder" \
-  "claims@cascade.insure|Cascade Assurance · claims team"
+  "$ADMIN_ACCOUNT|$ADMIN_LABEL" \
+  "$MEMBER_ACCOUNT|$MEMBER_LABEL" \
+  "$TENANT2_ACCOUNT|$TENANT2_LABEL"
 do
   email=${account%%|*}
   label=${account##*|}
@@ -40,20 +45,25 @@ print("    role      %s" % d.get("role"))
 print("    username  %s" % d.get("username"))
 '
 
-  body=$(body_of "$(api_get "$tok" "/api/v1/crud/$DOMAIN/claim?limit=50")")
-  printf '%s' "$body" | python3 -c '
+  body=$(body_of "$(api_get "$tok" "/api/v1/crud/$DOMAIN/$ENTITY_TYPE?limit=50")")
+  python3 - "$body" "$ID_FIELD" "$ID_PREFIX" "${HIDDEN_FIELDS[*]}" "$ENTITY_LABEL" <<'PY'
 import json, sys
-rows = (json.load(sys.stdin).get("results") or [])
-seeded = [r for r in rows if str(r.get("claim_number","")).startswith("CLM-")]
-print(f"    claims readable          {len(rows)}  (seeded: {len(seeded)})")
+body_json, id_field, id_prefix, hidden_str, entity_label = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+hidden_fields = hidden_str.split()
+try:
+    rows = (json.loads(body_json).get("results") or [])
+except Exception:
+    rows = []
+seeded = [r for r in rows if str(r.get(id_field, "")).startswith(id_prefix)]
+print(f"    {entity_label}s readable        {len(rows)}  (seeded: {len(seeded)})")
 if seeded:
     keys = set()
     for r in seeded: keys |= set(r)
-    for f in ("fraud_score", "internal_notes"):
+    for f in hidden_fields:
         print(f"    sees {f:<16} {f in keys}")
-'
+PY
 done
 
 head1 "That is the whole setup."
 dim "02-rbac-enforcement.sh turns the last two lines into an assertion."
-dim "03-tenant-isolation.sh  asks whether one insurer can reach the other's book."
+dim "03-tenant-isolation.sh  asks whether one tenant can reach the other's records."

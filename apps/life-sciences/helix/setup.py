@@ -80,7 +80,7 @@ WORKFLOW_DEFINITIONS = [{
             "operation": "send_email",
             # input_map keys are the WIRE field names (to_email/subject/body_html), not camelCase wrapper args.
             "input_map": {
-                "to_email": "safety@helix.com",
+                "to_email": "safety@example.com",
                 "subject": "[HELIX] Serious adverse event — subject {{input.subject_id}}",
                 "body_html": (
                     "<h2>Serious Adverse Event Reported</h2>"

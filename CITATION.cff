@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use these reference apps in teaching or research, please cite them as below."
+title: "Supero reference apps"
+type: software
+authors:
+  - name: "Supero"
+    website: "https://www.supero.dev"
+    email: "info@supero.dev"
+repository-code: "https://github.com/supero-platform/supero-apps"
+url: "https://www.supero.dev/apps/"
+abstract: "Nineteen multi-tenant SaaS reference applications in Python for the Supero platform. Each app defines its data model, roles and field-level access in a schema file and gets a REST API, an admin panel and role-based access."
+keywords:
+  - multi-tenant
+  - role-based access control
+  - reference implementation
+  - SaaS
+  - Model Context Protocol
+license: MIT
+version: "1.0.0"
+date-released: "2026-09-06"

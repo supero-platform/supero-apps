@@ -6,7 +6,7 @@
 multi-tenant data, an admin panel and a URL. This repo is the source of 19 apps built on
 Supero, every one of them running live.**
 
-[![Four live Supero apps: Medora hospital network, Sentinel insurance, FieldOps field service and Pulse gyms](.github/assets/apps-gallery.png)](https://www.supero.dev/apps)
+[![Video: Claude Code connects to Supero over MCP with OAuth sign-in and turns a PRD into a live multi-tenant helpdesk app (3 min)](.github/assets/build-demo.jpg)](https://www.supero.dev/video/supero-build-demo.mp4)
 
 [Build yours with AI](#build-your-own-app-with-claude-or-chatgpt) · [Try a live app](#try-a-live-app-first) · [Run one locally](#then-run-it-yourself-in-about-two-minutes) · [All 19 apps](#the-apps) · [Docs](#docs) · [Ask a question](https://github.com/supero-platform/supero-apps/discussions/categories/q-a)
 
@@ -61,7 +61,8 @@ Then ask for something real:
 
 The assistant agrees a plan with you, builds the app, checks it and gives you a link to
 open.
-Full steps for each assistant: [docs/mcp.md](docs/mcp.md).
+Full steps for each assistant: [docs/mcp.md](docs/mcp.md). See it end to end in the
+[3-minute demo video](https://www.supero.dev/video/supero-build-demo.mp4).
 
 ---
 
@@ -120,6 +121,8 @@ The name you put in `SUPERO_DOMAIN` becomes yours if it's free.
 ---
 
 ## The apps
+
+[![Four live Supero apps: Medora hospital network, Sentinel insurance, FieldOps field service and Pulse gyms](.github/assets/apps-gallery.png)](https://www.supero.dev/apps)
 
 Each one is a complete, multi-tenant application — public storefront *and* admin panel,
 with role-based access enforced on the server, not in the UI.

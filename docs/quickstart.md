@@ -143,7 +143,7 @@ on the `supero==3.7.1` these apps pin.)
 
 ## Next
 
-- [Build with Claude over MCP](mcp.md) — have your AI edit the app
+- [Build with your AI over MCP](mcp.md) — sign in from Claude or ChatGPT and have it build or edit the app
 - [Schemas](schemas.md) — inheritance, encryption, field-level access
 - [Deploy](deploy.md) — get off localhost
 

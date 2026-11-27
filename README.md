@@ -2,13 +2,13 @@
 
 # Supero Apps
 
-**19 applications. Full source. Clone one onto your own domain and run it.**
+**Describe a business app to Claude or ChatGPT and get a live one back: sign-in, roles,
+multi-tenant data, an admin panel and a URL. This repo is the source of 19 apps built on
+Supero, every one of them running live.**
 
-Every app in this repo is **running live right now** — and this is the code behind it.
-Multi-tenant, role-based, schema-driven. No npm, no build step. MIT app source, open SDK,
-your data exportable over the API — see [how this works, honestly](#how-this-works-honestly).
+[![Four live Supero apps: Medora hospital network, Sentinel insurance, FieldOps field service and Pulse gyms](.github/assets/apps-gallery.png)](https://www.supero.dev/apps)
 
-[Live apps](https://www.supero.dev/apps) · [Quickstart](docs/quickstart.md) · [Build with Claude](docs/mcp.md) · [Platform docs](docs/) · [Ask a question](https://github.com/supero-platform/supero-apps/discussions/categories/q-a)
+[Build yours with AI](#build-your-own-app-with-claude-or-chatgpt) · [Try a live app](#try-a-live-app-first) · [Run one locally](#then-run-it-yourself-in-about-two-minutes) · [All 19 apps](#the-apps) · [Docs](#docs) · [Ask a question](https://github.com/supero-platform/supero-apps/discussions/categories/q-a)
 
 [![PyPI](https://img.shields.io/pypi/v/supero.svg)](https://pypi.org/project/supero/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -18,7 +18,54 @@ your data exportable over the API — see [how this works, honestly](#how-this-w
 
 ---
 
-## See it before you install it
+## The problem it solves
+
+Every business app needs the same plumbing before it does anything useful: sign-up and
+sign-in, roles, keeping each customer's data apart, an admin panel, payments and email, and
+somewhere to run it. Teams rebuild that plumbing for every project, and AI coding tools
+regenerate it from scratch each time, usually with the access rules living in the UI where
+anyone with a browser console can get around them.
+
+Supero is the backend that already has the plumbing. You describe the app; the platform
+supplies the parts every app needs and enforces the rules on the server.
+
+- **Sign-in, sign-up and roles** enforced by the server, not by the front-end
+- **Many organisations on one deployment**, each one's rows kept apart by the API
+- **Field-level access**: a patient's record can arrive with the clinical notes removed
+- **REST API, SDK and admin panel** generated from your data model
+- **Payments, email, approvals and workflows** as services you switch on
+- **A live URL** on `<name>.supero.live`, or deploy to your own cloud
+
+---
+
+## Build your own app with Claude or ChatGPT
+
+Connect your AI assistant to Supero's MCP server, sign in with your Supero account in the
+browser window that opens, and describe what you need. No API key, no install. Don't have
+an account? Create one in that same window; it's free and needs no card.
+
+**Server URL:** `https://mcp.supero.dev/mcp`
+
+| Assistant | How to connect |
+|---|---|
+| **Claude** (claude.ai, Desktop) | Customize → Connectors → **+ Add** → **Add custom connector**. Name it Supero, paste the URL, leave the OAuth fields empty, **Add**, then **Connect** and sign in. |
+| **ChatGPT** | chatgpt.com/plugins → **+** → add a custom MCP server. Public endpoint, paste the URL, Authentication **OAuth**, then sign in. |
+| **Claude Code** | `claude mcp add --scope user --transport http supero https://mcp.supero.dev/mcp`, then `/mcp` → supero → **Authenticate**. |
+| **Cursor, VS Code, Gemini CLI, Codex CLI, Windsurf** | Same URL and sign-in; config for each is in [docs/mcp.md](docs/mcp.md#cursor-vs-code-gemini-cli-codex-cli-windsurf). |
+
+Then ask for something real:
+
+> *"Build a booking app for a small physiotherapy clinic. Patients sign up and book
+> sessions; therapists see their own schedule and write notes patients can't read; the
+> owner sees every booking and the weekly revenue."*
+
+The assistant agrees a plan with you, builds the app, checks it and gives you a link to
+open.
+Full steps for each assistant: [docs/mcp.md](docs/mcp.md).
+
+---
+
+## Try a live app first
 
 [**lumen.supero.live**](https://lumen.supero.live) is one of the 19, running the code in
 [`apps/healthcare/lumen`](apps/healthcare/lumen). The login page lists every demo account
@@ -137,38 +184,21 @@ role and password — click a row to fill the form.
 
 ---
 
-## Build it with your AI
+## What your AI assistant is allowed to do
 
 Every app ships a `CLAUDE.md` (and `.cursorrules` / `.windsurfrules`) so your assistant
-understands the codebase before it touches a line.
+understands the codebase before it touches a line. Connected over MCP
+([setup above](#build-your-own-app-with-claude-or-chatgpt)), it can also design schemas, run
+CRUD, connect a database and take an app from a sentence to a live URL.
 
-You can also connect your editor directly to the platform over **MCP** — **64 tools** that
-let an assistant design schemas, run CRUD, connect a database, and take an app from a
-sentence to a live URL:
-
-```bash
-claude mcp add --transport http supero https://api.supero.dev/mcp/v1/messages \
-  --header "X-API-Key: ak_your_key_here"
-```
-
-Then just ask:
-
-> *"Add a waitlist to the clinic app — patients join, staff promote them when a slot opens."*
-
-**The interesting part is what the assistant is allowed to do.** An MCP call carries *your*
+**It acts as you, with your permissions.** An MCP call carries *your*
 credential to the same API a browser would use — no service account, no elevated path. So
 the agent inherits your permissions rather than getting its own, and the row scoping and
 field hiding above apply to it identically. An agent you point at a customer's data is
 bounded by the same policy the customer is.
 
-The server is live and you can inspect it without a key:
-
-```bash
-curl https://api.supero.dev/mcp/v1/info
-```
-
-[docs/mcp.md](docs/mcp.md) covers getting a key and the tool families. The complete
-reference, every parameter, is at
+[docs/mcp.md](docs/mcp.md) covers sign-in for each assistant, API keys for CI, and the
+tool families. The complete reference, every parameter, is at
 [docs.supero.dev/developers/mcp/tool-reference](https://docs.supero.dev/developers/mcp/tool-reference).
 
 ---
@@ -296,7 +326,7 @@ artifact, not source.
 | Guide | |
 |---|---|
 | [Quickstart](docs/quickstart.md) | Clone an app onto your own domain |
-| [Build with Claude (MCP)](docs/mcp.md) | Connect Claude Code / Cursor / Copilot |
+| [Build with your AI (MCP)](docs/mcp.md) | Connect Claude, ChatGPT, Claude Code, Cursor, VS Code |
 | [How it works](docs/architecture.md) | The mental model: schema → API → RBAC, multi-tenancy |
 | [API reference](docs/api-reference.md) | Auth, CRUD, services, connectors, files, MCP |
 | [Schemas](docs/schemas.md) | The data model, inheritance, field-level access |

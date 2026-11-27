@@ -21,7 +21,7 @@ start nor a useful description of anything.
 | [api-reference.md](api-reference.md) | Auth, CRUD paths, and the SDK equivalents. Note the casing rule: the SDK takes `Provider`, the URL takes `provider` |
 | [services-and-workflows.md](services-and-workflows.md) | The service catalogue, and workflows as declared sagas with compensation |
 | [admin-panel.md](admin-panel.md) | Users, API keys, connectors, monitoring |
-| [mcp.md](mcp.md) | Connecting an AI editor to the platform. 64 tools |
+| [mcp.md](mcp.md) | Connect Claude, ChatGPT or your editor with a browser sign-in, then build apps by describing them |
 
 ## Shipping
 

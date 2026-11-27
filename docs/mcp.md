@@ -1,94 +1,117 @@
-# Build with Claude (MCP)
+# Build with your AI assistant (MCP)
 
-Supero speaks the [Model Context Protocol](https://modelcontextprotocol.io). Point your AI
-editor at it and your assistant can design schemas, generate UI, run CRUD, and deploy —
-against your real domain, not a mock.
+Supero runs a [Model Context Protocol](https://modelcontextprotocol.io) server. Connect
+Claude, ChatGPT, Claude Code, Cursor or VS Code to it, describe the app you want, and the
+assistant designs the schemas, roles and screens, publishes the app and hands you a URL.
+Everything runs against your real Supero account, not a mock.
 
-The server is live. You can check it right now without a key:
+**Server URL:** `https://mcp.supero.dev/mcp`
+
+You sign in with your Supero account in a browser window (OAuth). There is no API key to
+create or paste. If you don't have an account yet, create one in that window; it's free and
+needs no card.
+
+---
+
+## Connect your assistant
+
+### Claude (claude.ai or Claude Desktop)
+
+1. Open **Customize → Connectors**, click **+ Add**, then **Add custom connector**.
+   (Team and Enterprise: an Owner adds it once under Organization settings → Connectors.)
+2. Name it **Supero**, paste `https://mcp.supero.dev/mcp`, leave the OAuth fields empty,
+   click **Add**, then **Connect**.
+3. A Supero window opens. Sign in, make the two choices on the Allow page, then click
+   **Allow**.
+4. In a new chat, click **+ → Connectors**, switch Supero on, and describe your app.
+
+Works on every Claude plan. The Free plan allows one custom connector.
+
+### ChatGPT
+
+1. Open **chatgpt.com/plugins**, click **+** and add a custom MCP server.
+   (Older accounts: Settings → Apps & Connectors → Create.)
+2. Name it **Supero**, choose **Public endpoint**, paste `https://mcp.supero.dev/mcp` and
+   set Authentication to **OAuth**. Confirm the risk notice, then create it.
+3. Sign in to Supero in the window that opens and click **Allow**.
+4. In a new chat, type **@** and pick Supero, then describe your app.
+
+Custom MCP servers need a ChatGPT plan that allows them. On Business, Enterprise and Edu an
+admin may have to switch them on first.
+
+### Claude Code
 
 ```bash
-curl https://api.supero.dev/mcp/v1/info
+claude mcp add --scope user --transport http supero https://mcp.supero.dev/mcp
 ```
 
-```json
-{
-  "name": "supero",
-  "version": "2.0.0",
-  "protocol_version": "2024-11-05",
-  "transport": "streamable-http",
-  "endpoint": "/mcp/v1/messages",
-  "authentication": { "methods": ["bearer", "api_key"] },
-  "capabilities": { "tools": true, "resources": true, "prompts": true }
-}
-```
+Start `claude`, type `/mcp`, select **supero** and choose **Authenticate**. Your browser
+opens at Supero; sign in and click **Allow**. On a remote or headless machine, open the
+link Claude Code prints.
+
+### Cursor, VS Code, Gemini CLI, Codex CLI, Windsurf
+
+Same URL, same browser sign-in. Each editor has its own config file:
+
+| Editor | Config | Step-by-step |
+|---|---|---|
+| Cursor | `~/.cursor/mcp.json` → `{"mcpServers":{"supero":{"url":"https://mcp.supero.dev/mcp"}}}` | [connect-cursor](https://docs.supero.dev/developers/mcp/connect-cursor) |
+| VS Code (Copilot) | `.vscode/mcp.json` → `{"servers":{"supero":{"type":"http","url":"https://mcp.supero.dev/mcp"}}}` | [connect-vscode-copilot](https://docs.supero.dev/developers/mcp/connect-vscode-copilot) |
+| Gemini CLI | `~/.gemini/settings.json` → `{"mcpServers":{"supero":{"httpUrl":"https://mcp.supero.dev/mcp"}}}`, then `/mcp auth supero` | [connect-gemini-cli](https://docs.supero.dev/developers/mcp/connect-gemini-cli) |
+| Codex CLI | `~/.codex/config.toml` → `[mcp_servers.supero]` `url = "https://mcp.supero.dev/mcp"`, then `codex mcp login supero` | [connect-codex-cli](https://docs.supero.dev/developers/mcp/connect-codex-cli) |
+| Windsurf | `{"mcpServers":{"supero":{"serverUrl":"https://mcp.supero.dev/mcp"}}}` | [connect-windsurf](https://docs.supero.dev/developers/mcp/connect-windsurf) |
+
+### What to ask for
+
+Describe the business, who uses it and what they do. For example:
+
+> *"Build a booking app for a small physiotherapy clinic. Patients sign up and book
+> sessions; therapists see their own schedule and write session notes patients can't read;
+> the owner sees every booking and the weekly revenue."*
+
+The assistant plans the app with you first, then builds it, checks it and returns a link
+you can open. Changing it later is the same conversation: *"add a waitlist for full
+slots"*.
 
 ---
 
-## Two ways in
+## Opening an app from this repo in your editor
 
-Every app in this repo already ships a `CLAUDE.md`, plus `.cursorrules` and
-`.windsurfrules`. **Just opening an app folder in your editor gets you a useful assistant** —
-it knows the layout, the rules, and what never to edit.
-
-MCP is the second, deeper path: it connects your editor to the **platform**, so your
-assistant can act on your live domain rather than only editing files.
-
-Use both. They compose.
+Every app in this repo ships a `CLAUDE.md`, plus `.cursorrules` and `.windsurfrules`.
+Opening an app folder in your editor gets you an assistant that knows the layout, the rules
+and what never to edit. MCP connects the same assistant to the **platform**, so it can act
+on your live account rather than only editing files. Use both.
 
 ---
 
-## Connect Claude Code
+## API keys (CI and scripts)
 
-Get an API key from the dashboard at [app.supero.dev](https://app.supero.dev) → your
-project → API keys. Keys are scoped to one project and revocable.
+For automation where no browser is available, use a project API key instead of sign-in.
+Create one at [app.supero.dev](https://app.supero.dev) → your project → API keys. Keys are
+scoped to one project and revocable.
 
 ```bash
 claude mcp add --transport http supero https://api.supero.dev/mcp/v1/messages \
   --header "X-API-Key: ak_your_key_here"
 ```
 
-Verify:
+You can check the server without signing in:
 
 ```bash
-claude mcp list
+curl https://api.supero.dev/mcp/v1/info
 ```
-
-Then ask for something real:
-
-> *"Add a waitlist to this clinic — patients can join when a slot is full, staff promote
-> them when one opens. Update the schema, the policies, and the admin screen."*
-
-### Cursor / Windsurf
-
-Same server, editor-specific config. In Cursor, add to `.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "supero": {
-      "url": "https://api.supero.dev/mcp/v1/messages",
-      "headers": { "X-API-Key": "ak_your_key_here" }
-    }
-  }
-}
-```
-
-### Claude Desktop — not yet
-
-Desktop custom connectors require OAuth 2.1, which this server doesn't implement yet
-(it authenticates with API keys and JWTs). **Use Claude Code for now.** OAuth support is
-on the roadmap; follow [Issues](https://github.com/supero-platform/supero-apps/issues) for progress.
 
 ---
 
 ## Authentication
 
-Two methods, both tenant-scoped:
+Three methods, all tenant-scoped:
 
-| Method | Header | Notes |
+| Method | How | Notes |
 |---|---|---|
-| API key | `X-API-Key: ak_...` | Revocable. Best for editors. |
-| JWT | `Authorization: Bearer <jwt>` | Short-lived. Best for programmatic use. |
+| OAuth sign-in | Browser window when you connect | The default for Claude, ChatGPT and editors. Revoke it from your account. |
+| API key | `X-API-Key: ak_...` | Revocable. For CI and scripts. |
+| JWT | `Authorization: Bearer <jwt>` | Short-lived. For programmatic use. |
 
 **Your key carries its own scope, and the scope depends on how it was issued.** A key tied
 to a specific project and tenant acts as a tenant user; one issued against the default
@@ -187,16 +210,9 @@ pushes the schema to your domain and checks it landed.
 
 ---
 
-## Honest limits
+## Problems?
 
-- **No OAuth yet** → no Claude Desktop connector. Claude Code and Cursor work.
-- **Transport is JSON-RPC over HTTP POST.** Stateless. There's no SSE stream, so clients
-  that require the SSE leg won't attach.
-- **Protocol pinned to `2024-11-05`.** The spec has moved on since; clients that
-  negotiate a newer revision and refuse to fall back will not attach.
-- **The instruction payload is large.** Some clients with tight context budgets will feel it.
-
-Hitting something else? [Open an issue](https://github.com/supero-platform/supero-apps/issues) —
+Something not working? [Open an issue](https://github.com/supero-platform/supero-apps/issues) —
 MCP is where we're investing most.
 
 ---
